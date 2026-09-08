@@ -1,0 +1,494 @@
+// prisma/schema.prisma
+// Fluxo Patrimonial — Sistema de Gestão de Empréstimos Patrimoniais
+// Schema definitivo — banco recriado do zero (sem compatibilidade com dados legados).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Permissao {
+  colaborador
+  patrimonio
+  administrador
+}
+
+enum TipoEmprestimo {
+  interno
+  externo
+}
+
+enum PeriodoSolicitacao {
+  MANHA
+  TARDE
+  NOITE
+}
+
+enum StatusSolicitacao {
+  AGUARDANDO_GESTOR
+  REJEITADA_GESTOR
+  AGUARDANDO_PATRIMONIO
+  REJEITADA_PATRIMONIO
+  CONFIRMADA
+  AGUARDANDO_ENVIO_ASSINATURA
+  AGUARDANDO_ASSINATURA
+  ASSINATURA_CONFIRMADA
+  EM_SEPARACAO
+  PRONTA_RETIRADA
+  EM_UTILIZACAO
+  FINALIZADA
+  CANCELADA
+  // NOVO (Etapa 9A-B): registro operacional de que o Patrimônio preparou o
+  // item (chegou a PRONTA_RETIRADA), mas o solicitante não compareceu para
+  // retirar. Estado terminal, distinto de CANCELADA (decisão operacional
+  // anterior à retirada) — ver src/lib/status.ts.
+  NAO_RETIRADA
+}
+
+// NOVO (Fase 3): origem da solicitação — reserva antecipada (fluxo normal)
+// ou atendimento imediato (Patrimônio atende o solicitante na hora, sem
+// reserva prévia). Reaproveita a mesma entidade Solicitacao.
+enum OrigemSolicitacao {
+  RESERVA
+  ATENDIMENTO_IMEDIATO
+}
+
+// NOVO (Etapa 9A-C): condição estruturada registrada ao devolver os itens de
+// uma solicitação. Só se aplica a devoluções registradas a partir desta
+// etapa — devoluções antigas mantêm o texto livre original em
+// Solicitacao.devolucaoCondicaoTextoLegado, nunca migrado para este enum.
+enum CondicaoDevolucao {
+  SEM_AVARIAS
+  COM_AVARIA
+  DANIFICADO
+  NECESSITA_VERIFICACAO
+}
+
+// NOVO (Etapa domain-flow): tipo de domínio exigido no preparo de notebooks
+// da solicitação — propriedade da SOLICITAÇÃO como um todo (todos os
+// notebooks de uma mesma solicitação compartilham a mesma necessidade),
+// não de cada ItemPatrimonioSolicitacao individualmente. Só relevante
+// quando Solicitacao.notebooksComDominio = true; ver comentário no campo.
+enum TipoDominio {
+  EDUCACIONAL
+  ADMINISTRATIVO
+}
+
+// NOVO (Etapa D.1): infraestrutura de e-mail. Nenhum evento de negócio
+// dispara e-mail ainda — apenas a modelagem/rastreabilidade está sendo
+// criada nesta etapa. Ver src/lib/email/.
+enum TipoEmailEvento {
+  SOLICITACAO_AGUARDANDO_GESTOR
+  SOLICITACAO_AGUARDANDO_PATRIMONIO
+  ASSINATURA_PENDENTE
+  RESERVA_CONFIRMADA
+  PRONTA_RETIRADA
+  NAO_RETIRADA
+  CANCELAMENTO
+  REJEICAO_GESTOR
+  REJEICAO_PATRIMONIO
+}
+
+// NOVO (Etapa D.2 — outbox robusto): PROCESSANDO é o estado de claim
+// exclusivo (PENDENTE → PROCESSANDO via updateMany condicional) usado pelo
+// dispatcher/processarEmailEvento para garantir que apenas UM processo
+// concorrente chegue a chamar o provedor de e-mail para um mesmo evento —
+// ver src/lib/email/processar-evento.ts. Um evento PROCESSANDO "preso" (o
+// processo morreu no meio, ou o provedor confirmou envio mas a persistência
+// de ENVIADO falhou) NÃO é reprocessado automaticamente nesta fase — exige
+// reconciliação futura, fora do escopo da D.2.
+//
+// NOVO (Etapa D.2 — correção pós-Codex-Review): OBSOLETO representa um
+// evento cuja condição de negócio deixou de ser verdadeira ANTES do envio
+// (ex.: EmailEvento PRONTA_RETIRADA recuperado pelo dispatcher, mas a
+// Solicitacao já avançou para EM_UTILIZACAO/CANCELADA/NAO_RETIRADA
+// nesse meio-tempo). Estado terminal, distinto de FALHA (não houve erro
+// técnico) — nunca reprocessado automaticamente. Ver
+// src/lib/email/processar-evento.ts (aindaValido).
+enum StatusEmailEvento {
+  PENDENTE
+  PROCESSANDO
+  ENVIADO
+  FALHA
+  OBSOLETO
+}
+
+// =============================================================================
+// USUÁRIOS
+// =============================================================================
+
+model User {
+  id        String    @id @default(cuid())
+  nome      String
+  email     String    @unique
+  senha     String
+  permissao Permissao @default(colaborador)
+  ativo     Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Permissão adicional de gestor (não é um perfil exclusivo)
+  podeSerGestor  Boolean @default(false) @map("pode_ser_gestor")
+  gestorPadraoId String? @map("gestor_padrao_id")
+
+  // Capacidade adicional (Etapa security/request-for-another — NÃO é um
+  // perfil/role novo): habilita SOMENTE solicitanteId != session.id em
+  // POST /api/solicitacoes (ver podeSolicitarParaOutro() em
+  // src/lib/permissions.ts) — não amplia nenhuma outra permissão (não
+  // libera aprovação de gestor, Patrimônio, Administração nem Atendimento
+  // Imediato). Editável apenas por Administrador, via PATCH
+  // /api/colaboradores/[id] — nunca pelo próprio colaborador.
+  podeSolicitarParaOutro Boolean @default(false) @map("pode_solicitar_para_outro")
+
+  // Etapa security/session-revocation — versionamento de sessão: qualquer
+  // mudança de segurança relevante no usuário (senha, ativo, permissao,
+  // podeSerGestor, podeSolicitarParaOutro e, futuramente, e-mail) incrementa
+  // este contador. O JWT carrega a versão vigente NO MOMENTO DO LOGIN; rotas
+  // de mutação revalidam comparando essa claim com o valor ATUAL do banco
+  // (getValidatedMutationSession(), src/lib/session-validation.ts) — uma
+  // divergência invalida a sessão imediatamente para ações protegidas, sem
+  // esperar a expiração do token (24h). Sem índice: sempre lido junto de um
+  // lookup por `id` (chave primária), nunca filtrado isoladamente por este
+  // campo.
+  versaoSessao Int @default(0) @map("versao_sessao")
+
+  gestorPadrao   User?   @relation("GestorPadrao", fields: [gestorPadraoId], references: [id], onDelete: SetNull)
+  colaboradores  User[]  @relation("GestorPadrao")
+
+  solicitacoesComoSolicitante Solicitacao[]          @relation("SolicitanteUser")
+  solicitacoesCriadas         Solicitacao[]          @relation("CriadoPorUser")
+  solicitacoesComoGestor      Solicitacao[]          @relation("GestorUser")
+  eventosHistorico            HistoricoSolicitacao[]
+  notificacoes                Notificacao[]
+  assinaturasEnviadas         Assinatura[]           @relation("AssinaturaEnviadaPor")
+  assinaturasConfirmadas      Assinatura[]           @relation("AssinaturaConfirmadaPor")
+
+  @@index([permissao])
+  @@index([ativo])
+  @@index([podeSerGestor])
+  @@map("users")
+}
+
+// =============================================================================
+// PATRIMÔNIO
+// =============================================================================
+
+model CategoriaPatrimonio {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  descricao String?
+  icone     String?
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  patrimonios Patrimonio[]
+
+  @@index([ativo])
+  @@map("categorias_patrimonio")
+}
+
+model Patrimonio {
+  id          String  @id @default(cuid())
+  numero      String  @unique @map("numero_patrimonio")
+  marca       String
+  modelo      String
+  observacoes String?
+  ativo       Boolean @default(true)
+
+  categoriaId String              @map("categoria_id")
+  categoria   CategoriaPatrimonio @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itensSolicitacao ItemPatrimonioSolicitacao[]
+
+  @@index([numero])
+  @@index([ativo])
+  @@index([categoriaId])
+  @@map("patrimonios")
+}
+
+// =============================================================================
+// SOLICITAÇÃO — entidade central do sistema
+// =============================================================================
+
+model Solicitacao {
+  id     String @id @default(cuid())
+  numero Int    @unique @default(autoincrement())
+
+  tipoEmprestimo TipoEmprestimo @map("tipo_emprestimo")
+
+  // solicitante oficial x autor do cadastro (podem ser pessoas diferentes)
+  solicitanteId String @map("solicitante_id")
+  solicitante   User   @relation("SolicitanteUser", fields: [solicitanteId], references: [id], onDelete: Restrict)
+  criadoPorId   String @map("criado_por_id")
+  criadoPor     User   @relation("CriadoPorUser", fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  // dados de atividade interna
+  ambiente   String?
+  finalidade String?
+
+  // dados de atividade externa
+  atividadeExterna String? @map("atividade_externa")
+  local            String?
+  cidade           String?
+  gestorId         String? @map("gestor_id")
+  gestor           User?   @relation("GestorUser", fields: [gestorId], references: [id], onDelete: SetNull)
+
+  observacoes String?
+
+  data     DateTime             @db.Date
+  periodos PeriodoSolicitacao[]
+
+  notebooksComDominio Boolean?     @map("notebooks_com_dominio")
+  // NOVO (Etapa domain-flow): nullable — só é preenchido quando
+  // notebooksComDominio = true. Solicitações antigas e solicitações sem
+  // domínio permanecem com tipoDominio = null (nunca inferido/backfillado).
+  tipoDominio         TipoDominio? @map("tipo_dominio")
+
+  status StatusSolicitacao @default(AGUARDANDO_PATRIMONIO)
+
+  // NOVO (Fase 3): origem e controle de antecedência/prazo.
+  // Registrados uma única vez na criação e nunca recalculados depois — se a
+  // regra de prazo mudar no futuro, o histórico permanece fiel ao momento
+  // real da solicitação (ver src/lib/prazo.ts, criado na Etapa 2).
+  origem              OrigemSolicitacao @default(RESERVA) @map("origem")
+  prazoHoras          Int?              @map("prazo_horas")
+  antecedenciaMinutos Int?              @map("antecedencia_minutos")
+  dentroDoPrazo       Boolean?          @map("dentro_do_prazo")
+  prazoReferenciaEm   DateTime?         @map("prazo_referencia_em")
+
+  // justificativas de rejeição
+  motivoRejeicaoGestor     String? @map("motivo_rejeicao_gestor")
+  motivoRejeicaoPatrimonio String? @map("motivo_rejeicao_patrimonio")
+
+  // registro de decisões
+  gestorDecisaoEm     DateTime? @map("gestor_decisao_em")
+  patrimonioDecisaoEm DateTime? @map("patrimonio_decisao_em")
+  patrimonioDecisorId String?   @map("patrimonio_decisor_id")
+
+  // separação / retirada / devolução
+  separadoEm        DateTime? @map("separado_em")
+  separadoPorId     String?   @map("separado_por_id")
+  retiradaEm        DateTime? @map("retirada_em")
+  retiradaPorId     String?   @map("retirada_por_id")
+  retiradaObs       String?   @map("retirada_obs")
+  devolucaoEm    DateTime? @map("devolucao_em")
+  devolucaoPorId String?   @map("devolucao_por_id")
+  // NOVO (Etapa 9A-C): condição estruturada da devolução. A coluna antiga
+  // (texto livre) foi RENOMEADA para devolucao_condicao_texto_legado —
+  // nunca convertida/reinterpretada — e devolucaoCondicao passou a ser uma
+  // coluna NOVA, do tipo enum, usada só por devoluções registradas a partir
+  // desta etapa. Ver migration 20260815130000_condicao_devolucao.
+  devolucaoCondicao            CondicaoDevolucao? @map("devolucao_condicao")
+  devolucaoCondicaoTextoLegado String?            @map("devolucao_condicao_texto_legado")
+  devolucaoObs                 String?            @map("devolucao_obs")
+
+  // NOVO (Etapa 9A-B): auditoria de "não retirado" — mesmo padrão solto
+  // (sem @relation) já usado por retiradaPorId/devolucaoPorId/separadoPorId.
+  naoRetiradaEm   DateTime? @map("nao_retirada_em")
+  naoRetiradaPorId String?  @map("nao_retirada_por_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itensPatrimonio ItemPatrimonioSolicitacao[]
+  itensPapelaria  ItemPapelaria[]
+  itensServico    ItemServicoSolicitacao[]
+  assinatura      Assinatura?
+  historico       HistoricoSolicitacao[]
+  notificacoes    Notificacao[]
+  emailEventos    EmailEvento[]
+
+  @@index([status])
+  @@index([data])
+  @@index([solicitanteId])
+  @@index([gestorId])
+  @@index([tipoEmprestimo])
+  @@index([origem])
+  @@map("solicitacoes")
+}
+
+model ItemPatrimonioSolicitacao {
+  id            String   @id @default(cuid())
+  solicitacaoId String   @map("solicitacao_id")
+  patrimonioId  String   @map("patrimonio_id")
+  comDominio    Boolean? @map("com_dominio")
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  patrimonio  Patrimonio  @relation(fields: [patrimonioId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([solicitacaoId, patrimonioId])
+  @@index([patrimonioId])
+  @@map("itens_patrimonio_solicitacao")
+}
+
+model ItemPapelaria {
+  id            String @id @default(cuid())
+  solicitacaoId String @map("solicitacao_id")
+  descricao     String
+  quantidade    Int
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([solicitacaoId])
+  @@map("itens_papelaria")
+}
+
+// =============================================================================
+// SERVIÇOS / MOVIMENTAÇÕES (Fase 3)
+// =============================================================================
+
+// Catálogo administrável de serviços/movimentações realizados pelo
+// Patrimônio (mesmo padrão de CategoriaPatrimonio — evita código fixo).
+model TipoServico {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  descricao String?
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens ItemServicoSolicitacao[]
+
+  @@index([ativo])
+  @@map("tipos_servico")
+}
+
+model ItemServicoSolicitacao {
+  id            String  @id @default(cuid())
+  solicitacaoId String  @map("solicitacao_id")
+  tipoServicoId String  @map("tipo_servico_id")
+  quantidade    Int?
+  ambiente      String?
+  observacao    String?
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  tipoServico TipoServico @relation(fields: [tipoServicoId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([solicitacaoId])
+  @@index([tipoServicoId])
+  @@map("itens_servico_solicitacao")
+}
+
+model Assinatura {
+  id            String @id @default(cuid())
+  solicitacaoId String @unique @map("solicitacao_id")
+
+  link String?
+
+  enviadoPorId String?   @map("enviado_por_id")
+  enviadoPor   User?     @relation("AssinaturaEnviadaPor", fields: [enviadoPorId], references: [id], onDelete: SetNull)
+  enviadoEm    DateTime? @map("enviado_em")
+
+  confirmadaPorId String?   @map("confirmada_por_id")
+  confirmadaPor   User?     @relation("AssinaturaConfirmadaPor", fields: [confirmadaPorId], references: [id], onDelete: SetNull)
+  confirmadaEm    DateTime? @map("confirmada_em")
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("assinaturas")
+}
+
+model HistoricoSolicitacao {
+  id             String   @id @default(cuid())
+  solicitacaoId  String   @map("solicitacao_id")
+  usuarioId      String?  @map("usuario_id")
+  acao           String
+  statusAnterior String?  @map("status_anterior")
+  statusNovo     String?  @map("status_novo")
+  descricao      String?
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  usuario     User?       @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([solicitacaoId])
+  @@map("historico_solicitacoes")
+}
+
+model Notificacao {
+  id            String   @id @default(cuid())
+  usuarioId     String   @map("usuario_id")
+  solicitacaoId String?  @map("solicitacao_id")
+  titulo        String
+  mensagem      String
+  link          String?
+  tipo          String?
+  lida          Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  usuario     User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  solicitacao Solicitacao? @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, lida])
+  @@map("notificacoes")
+}
+
+// =============================================================================
+// E-MAIL (Etapa D.1) — infraestrutura de rastreabilidade/idempotência.
+// Nenhuma rota de negócio grava registros aqui ainda.
+// =============================================================================
+
+// Um registro por (solicitação, tipo de evento, destinatário) — garante que o
+// mesmo e-mail não seja disparado duas vezes para o mesmo destinatário
+// lógico. `destinatario` guarda sempre o destinatário ORIGINAL esperado pelo
+// evento de negócio, mesmo quando o envio físico é redirecionado pelo modo
+// de teste (ver src/lib/email/recipient.ts) — a rastreabilidade de "quem
+// receberia isso em produção" não pode se perder por causa da homologação.
+model EmailEvento {
+  id            String            @id @default(cuid())
+  solicitacaoId String            @map("solicitacao_id")
+  tipo          TipoEmailEvento
+  destinatario  String
+  status        StatusEmailEvento @default(PENDENTE)
+  tentativas    Int               @default(0)
+  erro          String?
+  enviadoEm     DateTime?         @map("enviado_em")
+
+  // NOVO (Etapa D.3.6.2 — infraestrutura de schema para snapshot histórico):
+  // reservado para RESERVA_CONFIRMADA congelar, no momento da criação do
+  // evento, os dados necessários para reconstruir o e-mail exatamente como
+  // eram naquele momento — mesmo que o catálogo (Patrimonio/CategoriaPatrimonio)
+  // seja editado depois, antes do envio (inline ou pelo dispatcher). Nullable
+  // de propósito: eventos existentes e os demais tipos (PRONTA_RETIRADA,
+  // NAO_RETIRADA) continuam com payload NULL e não são afetados. Nenhum
+  // código passa a gravar ou ler este campo nesta etapa — só a coluna é
+  // criada. Ver análise da Etapa D.3.6.1 para o formato proposto
+  // (ReservaConfirmadaPayloadV1), a ser implementado na D.3.6.3+.
+  payload Json?
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([solicitacaoId, tipo, destinatario])
+  @@index([solicitacaoId])
+  @@index([status])
+  @@map("email_eventos")
+}

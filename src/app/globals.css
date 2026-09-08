@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Etapa redesign-global (Fase 1): off-white com um leve tom azulado
+       (em vez de cinza neutro puro) — a mesma família do painel direito
+       da tela de login, para os dois ambientes (login → dashboard)
+       parecerem o mesmo produto. Só o `background` muda; `card`
+       continua branco puro, para os cards se destacarem sem precisar de
+       sombra pesada (item 14/15 do pedido). */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 218 100% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 100% 47%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 218 100% 27%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 218 80% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 100% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 218 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Fundo animado da tela de autenticação (login/cadastro) — ver
+     src/components/auth/AnimatedAuthBackground.tsx. Rodada 4
+     (login-redesign): durações/amplitudes recalibradas para movimento
+     REALMENTE perceptível em 3–5s de observação (8–20s por ciclo,
+     conforme faixas pedidas nesta rodada), sem virar algo chamativo —
+     "ambiental", não "wallpaper". Desativado inteiro sob
+     prefers-reduced-motion abaixo — ver relatório de entrega: o motivo de
+     rodadas anteriores parecerem "sem efeito" era o SO de teste ter
+     "Mostrar animações" desligado, ativando essa mesma regra. */
+  .animate-blob-drift-1 {
+    animation: blob-drift-1 14s ease-in-out infinite alternate;
+  }
+  .animate-blob-drift-2 {
+    animation: blob-drift-2 17s ease-in-out infinite alternate;
+  }
+  .animate-blob-drift-3 {
+    animation: blob-drift-3 19s ease-in-out infinite alternate;
+  }
+  .animate-glow-drift-1 {
+    animation: glow-drift-1 14s ease-in-out infinite alternate;
+  }
+  .animate-glow-drift-2 {
+    animation: glow-drift-2 19s ease-in-out infinite alternate;
+  }
+  .animate-gradient-drift {
+    animation: gradient-drift 16s ease-in-out infinite alternate;
+  }
+  .animate-wave-drift {
+    animation: wave-drift 16s linear infinite;
+  }
+  .animate-wave-drift-slow {
+    animation: wave-drift 18s linear infinite;
+  }
+  .animate-wave-drift-fast {
+    animation: wave-drift 12s linear infinite;
+  }
+  .animate-particle-float {
+    animation: particle-float 14s ease-in-out infinite;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+}
+
+@keyframes blob-drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(50px, -40px, 0) scale(1.1); }
+}
+@keyframes blob-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-45px, 32px, 0) scale(0.93); }
+}
+@keyframes blob-drift-3 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(28px, 45px, 0) scale(1.07); }
+}
+@keyframes glow-drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
+  to { transform: translate3d(80px, 40px, 0) scale(1.15); opacity: 0.95; }
+}
+@keyframes glow-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1); opacity: 0.45; }
+  to { transform: translate3d(-70px, -30px, 0) scale(0.9); opacity: 0.85; }
+}
+@keyframes gradient-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes wave-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+/* --po/--tx/--ty (custom properties, ver AnimatedAuthBackground.tsx):
+   opacidade base e deslocamento X/Y de PICO de cada partícula, definidos
+   por elemento via inline style. Uma animação CSS assume o controle TOTAL
+   da propriedade durante todo o ciclo (mesmo nos extremos 0%/100%) — um
+   `opacity`/`transform` estático via `style` seria completamente ignorado
+   enquanto a animação roda. Por isso a variação por partícula
+   (deslocamento ~20–60px/15–50px em direções diferentes, item 4 desta
+   rodada) só é possível referenciando --tx/--ty dentro do keyframe. */
+@keyframes particle-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: calc(var(--po, 0.3) * 0.7); }
+  50% { transform: translate3d(var(--tx, 30px), var(--ty, -25px), 0) scale(1.2); opacity: calc(var(--po, 0.3) * 1.6); }
+}
+
+/* Acessibilidade (Etapa login-redesign, item 7/11): com redução de
+   movimento ativa, o fundo continua visualmente completo (gradiente,
+   blobs, glows, ondas, partículas) — só para de se mover. Nunca esconder
+   elementos, só a animação. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob-drift-1,
+  .animate-blob-drift-2,
+  .animate-blob-drift-3,
+  .animate-glow-drift-1,
+  .animate-glow-drift-2,
+  .animate-gradient-drift,
+  .animate-wave-drift,
+  .animate-wave-drift-slow,
+  .animate-wave-drift-fast,
+  .animate-particle-float {
+    animation: none !important;
+  }
+}
