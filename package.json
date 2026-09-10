@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "db:seed": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts",
     "test:email-config": "ts-node --project scripts/tsconfig.json scripts/test-email-config.ts",
     "test:email-processar-evento": "ts-node --project scripts/tsconfig.json scripts/test-email-processar-evento.ts",
     "test:email-dispatcher": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-email-dispatcher.ts",
@@ -62,6 +62,10 @@
     "test:demo-mode-routes": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-mode-routes.ts",
     "test:email-disabled": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-email-disabled.ts",
     "test:demo-solicitacoes-limit": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-solicitacoes-limit.ts",
+    "test:demo-status-middleware": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-status-middleware.ts",
+    "test:demo-reset-middleware": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-reset-middleware.ts",
+    "test:demo-dataset-reset": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-dataset-reset.ts",
+    "test:login-demo-ux": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-login-demo-ux.ts",
     "demo:reset": "ts-node --project scripts/tsconfig.json scripts/demo-reset.ts"
   },
   "dependencies": {

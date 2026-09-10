@@ -226,12 +226,23 @@ export default function LoginPage() {
         </>
       )}
 
-      <p className="text-center text-gray-500 text-sm mt-6 sm:mt-7">
-        Novo por aqui?{' '}
-        <Link href="/cadastro" className="text-highlight hover:text-highlight-dark font-semibold underline decoration-highlight/40 underline-offset-4 transition">
-          Cadastre-se
-        </Link>
-      </p>
+      {demoModeAtivo ? (
+        // Ambiente de demonstração: autocadastro é bloqueado server-side
+        // (POST /api/auth/cadastro, ver src/lib/demo-mode.ts) — mostrar o
+        // link aqui só confundiria o visitante com um caminho que sempre
+        // termina em 403. Texto discreto no lugar, nunca os dois ao mesmo
+        // tempo.
+        <p className="text-center text-gray-400 text-xs mt-6 sm:mt-7">
+          Ambiente demonstrativo com dados fictícios.
+        </p>
+      ) : (
+        <p className="text-center text-gray-500 text-sm mt-6 sm:mt-7">
+          Novo por aqui?{' '}
+          <Link href="/cadastro" className="text-highlight hover:text-highlight-dark font-semibold underline decoration-highlight/40 underline-offset-4 transition">
+            Cadastre-se
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

@@ -71,10 +71,17 @@ export async function POST(req: NextRequest) {
     // idas e vindas sequenciais ao banco (apagar + restaurar/recriar todo o
     // dataset) — em rede real (Supabase/pooler), 5s é curto demais e
     // abortaria a transação no meio, potencialmente deixando o dataset
-    // pela metade se o retry não acontecer.
+    // pela metade se o retry não acontecer. 30s (valor original) já se
+    // provou curto demais em teste real contra o pooler (P2028 — timeout
+    // estourado a 30161ms, dentro do laço de recriação das solicitações,
+    // já depois de usuários/categorias/tipos de serviço/patrimônios
+    // concluídos) — rollback ATÔMICO confirmado nesse teste (nenhuma
+    // escrita parcial ficou no banco), mas o reset simplesmente não
+    // terminava a tempo. 60s dá margem folgada sobre o pior caso
+    // observado.
     await prisma.$transaction(async (tx) => {
       await resetarDatasetDemo(tx)
-    }, { timeout: 30_000, maxWait: 10_000 })
+    }, { timeout: 60_000, maxWait: 15_000 })
 
     return NextResponse.json({ message: 'Dataset da demo restaurado.', resetadoEm: new Date().toISOString() }, { status: 200 })
   } catch (e) {

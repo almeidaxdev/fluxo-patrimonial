@@ -19,7 +19,7 @@ export function useDemoMode(): boolean {
     fetch('/api/demo/status')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelado && data) setDemoModeAtivo(!!data.demoModeAtivo)
+        if (!cancelado && data) setDemoModeAtivo(!!data.enabled)
       })
       .catch(() => {
         // Falha de rede: mantém o padrão (false) — nunca esconde/desabilita

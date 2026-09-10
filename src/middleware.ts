@@ -4,6 +4,35 @@ import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
 const PUBLIC_ROUTES = ['/login', '/cadastro']
+// Fluxo Patrimonial — Demo: a tela de login precisa consultar
+// GET /api/demo/status ANTES de existir qualquer sessão (decide se mostra
+// o botão "Acessar demonstração"), e POST /api/demo/entrar É o próprio
+// mecanismo de login da demo — nenhum dos dois pode exigir uma sessão que
+// ainda não existe. Caminho EXATO (nunca prefixo "/api/demo") — não isenta
+// nenhuma outra rota do mesmo namespace (ex.: futuras rotas sensíveis sob
+// /api/demo/*). A proteção de verdade de status/entrar continua sendo
+// feita pelas próprias rotas (DEMO_MODE=true, rate limit em entrar) — isto
+// só remove o gate de sessão do middleware, que nunca deveria existir para
+// elas. Ver DEMO_RESET_EXACT_PATH abaixo para o caso (diferente) de
+// /api/internal/demo-reset.
+const PUBLIC_DEMO_API_ROUTES = ['/api/demo/status', '/api/demo/entrar']
+// POST /api/internal/demo-reset: rota administrativa pensada para
+// automação server-to-server (npm run demo:reset — ver scripts/demo-
+// reset.ts —, e futuramente um cron) que NUNCA tem cookie de sessão. A
+// autenticação de verdade desta rota é exclusivamente o secret
+// DEMO_RESET_SECRET no header x-demo-reset-secret, comparado em tempo
+// constante DENTRO do handler (src/app/api/internal/demo-reset/route.ts)
+// — cookie de sessão nunca foi nem deve virar autorização para reset,
+// nem mesmo a sessão do Administrador Demo (ver o próprio handler: ele
+// não lê getSession()/getValidatedMutationSession() em nenhum momento).
+// Isentar esta rota do gate de sessão do middleware não é um bypass de
+// segurança: é remover um SEGUNDO gate (sessão) que nunca foi a
+// credencial real dela, deixando só a credencial que de fato importa (o
+// secret) decidir. Caminho EXATO + MÉTODO EXATO (POST) — nunca prefixo
+// "/api/internal/*" (outras rotas internas futuras continuam exigindo
+// sessão normalmente), nunca libera GET/PUT/DELETE nem qualquer outro
+// verbo nesta mesma rota.
+const DEMO_RESET_EXACT_PATH = '/api/internal/demo-reset'
 const PATRIMONIO_ROUTES = ['/todas-solicitacoes', '/patrimonios', '/pendencias', '/atendimento-imediato', '/relatorios']
 const ADMIN_ROUTES = ['/colaboradores', '/categorias']
 const GESTOR_ROUTES = ['/aprovacoes']
@@ -31,6 +60,20 @@ export async function middleware(request: NextRequest) {
 
   // Allow API auth routes
   if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next()
+  }
+
+  // Allow the two demo endpoints that must work WITHOUT a session (ver
+  // PUBLIC_DEMO_API_ROUTES acima).
+  if (PUBLIC_DEMO_API_ROUTES.includes(pathname)) {
+    return NextResponse.next()
+  }
+
+  // Allow POST /api/internal/demo-reset WITHOUT a session — caminho E
+  // método exatos (ver DEMO_RESET_EXACT_PATH acima). Um GET (ou qualquer
+  // outro verbo) para o mesmo caminho, ou qualquer outra rota sob
+  // /api/internal/, continua caindo no gate de sessão normal abaixo.
+  if (request.method === 'POST' && pathname === DEMO_RESET_EXACT_PATH) {
     return NextResponse.next()
   }
 

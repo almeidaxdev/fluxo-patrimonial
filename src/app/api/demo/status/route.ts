@@ -8,9 +8,11 @@
 // valor real usado pelo servidor.
 //
 // Nunca revela nada além do booleano — não é um endpoint de diagnóstico.
+// Isento do gate de sessão em src/middleware.ts (PUBLIC_DEMO_API_ROUTES) —
+// precisa responder ANTES de existir qualquer cookie/sessão.
 import { NextResponse } from 'next/server'
 import { isDemoModeAtivo } from '@/lib/demo-mode'
 
 export async function GET() {
-  return NextResponse.json({ demoModeAtivo: isDemoModeAtivo() }, { status: 200 })
+  return NextResponse.json({ enabled: isDemoModeAtivo() }, { status: 200 })
 }
