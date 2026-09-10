@@ -114,12 +114,19 @@ enum TipoEmailEvento {
 // nesse meio-tempo). Estado terminal, distinto de FALHA (não houve erro
 // técnico) — nunca reprocessado automaticamente. Ver
 // src/lib/email/processar-evento.ts (aindaValido).
+// SUPRIMIDO (Fluxo Patrimonial — Demo, EMAIL_PROVIDER=disabled): estado
+// TERMINAL dedicado para um evento processado com sucesso cujo envio físico
+// foi deliberadamente desligado pela configuração do ambiente — nunca
+// confundir com ENVIADO (provedor confirmou entrega real) nem com FALHA
+// (erro técnico). Ver src/lib/email/providers/disabled.ts e o tratamento
+// dedicado em src/lib/email/processar-evento.ts.
 enum StatusEmailEvento {
   PENDENTE
   PROCESSANDO
   ENVIADO
   FALHA
   OBSOLETO
+  SUPRIMIDO
 }
 
 // =============================================================================

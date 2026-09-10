@@ -121,6 +121,10 @@ Os dados demonstrativos utilizados pelo projeto são inteiramente fictícios. `p
 
 Nenhum identificador, nome ou e-mail reaproveita dado de qualquer ambiente real. O seed é idempotente — pode ser executado novamente sem duplicar registros.
 
+## Modo Demo
+
+Uma instância separada e pública ("Fluxo Patrimonial — Demo", infraestrutura própria — nunca o mesmo banco/deploy da produção) pode rodar com `DEMO_MODE=true`: colaboradores, patrimônios e categorias ficam visíveis mas somente-leitura (toda criação/edição/exclusão bloqueada no servidor com `403`, mesmo por chamada direta à API), o fluxo de solicitações continua totalmente funcional, um botão "Acessar demonstração" autentica direto numa conta pública sem exigir credencial, e um reset restaura o dataset transacional. Detalhes completos em [`docs/DEMO_MODE.md`](docs/DEMO_MODE.md).
+
 ## Screenshots
 
 > Screenshots da interface serão adicionados posteriormente.

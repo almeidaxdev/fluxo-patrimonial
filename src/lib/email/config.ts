@@ -1,8 +1,14 @@
 // src/lib/email/config.ts
-export type EmailProviderName = 'resend'
+// 'disabled' (Fluxo Patrimonial — Demo): provedor no-op — nenhuma chamada de
+// rede, nenhuma credencial exigida. Ver getEmailConfig() e
+// send-email.ts/getProvider() para os dois únicos pontos que conhecem este
+// valor especial.
+export type EmailProviderName = 'resend' | 'disabled'
 
 export interface EmailConfig {
   provider: EmailProviderName
+  // Vazios/nulos quando provider === 'disabled' — nunca exigidos nesse modo
+  // (ver isNonEmpty()/validações condicionais em getEmailConfig() abaixo).
   apiKey: string
   fromName: string
   fromAddress: string
@@ -19,7 +25,7 @@ export class EmailConfigError extends Error {
   }
 }
 
-const SUPPORTED_PROVIDERS: EmailProviderName[] = ['resend']
+const SUPPORTED_PROVIDERS: EmailProviderName[] = ['resend', 'disabled']
 
 function isNonEmpty(value: string | undefined | null): value is string {
   return typeof value === 'string' && value.trim().length > 0
@@ -88,6 +94,28 @@ export function getEmailConfig(): EmailConfig {
     )
   }
   const provider = providerRaw as EmailProviderName
+
+  // 'disabled' (Fluxo Patrimonial — Demo): nenhuma credencial de provedor é
+  // exigida — só APP_URL continua obrigatório (templates de e-mail montam
+  // links absolutos independentemente de o envio físico acontecer ou não).
+  // getProvider() (send-email.ts) nunca lê apiKey/fromAddress/fromName/
+  // replyTo/testMode/testRecipient quando provider === 'disabled' — os
+  // valores abaixo são só placeholders inertes para satisfazer o formato de
+  // EmailConfig.
+  if (provider === 'disabled') {
+    const appUrlDisabled = parseAppUrl(process.env.APP_URL)
+    configCache = {
+      provider,
+      apiKey: '',
+      fromName: '',
+      fromAddress: '',
+      replyTo: null,
+      appUrl: appUrlDisabled,
+      testMode: false,
+      testRecipient: null,
+    }
+    return configCache
+  }
 
   const apiKey = process.env.EMAIL_API_KEY
   if (!isNonEmpty(apiKey)) {

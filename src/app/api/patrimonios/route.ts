@@ -6,6 +6,7 @@ import { isPatrimonioOuAdmin } from '@/lib/permissions'
 import { patrimonioSchema, buscaSchema } from '@/lib/validations'
 import { parsePaginacao } from '@/lib/query-params'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 
 // Etapa security/session-revocation: GET "privilegiado" (auditoria seletiva
 // de GETs — ver docs/ARQUITETURA.md, seção "Revogação de sessão") — a rota
@@ -61,6 +62,11 @@ export async function POST(req: NextRequest) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isPatrimonioOuAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  // Fluxo Patrimonial — Demo: patrimônios são dado mestre somente-leitura
+  // na demo — criação bloqueada por inteiro (ver src/lib/demo-mode.ts).
+  const bloqueio = assertDemoActionAllowed('patrimonio:mutar')
+  if (bloqueio) return bloqueio
 
   try {
     const corpo = await parseJsonBody(req)

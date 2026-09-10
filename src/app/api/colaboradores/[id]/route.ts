@@ -7,6 +7,7 @@ import { getValidatedMutationSession } from '@/lib/session-validation'
 import { isAdmin } from '@/lib/permissions'
 import { emailPermitidoSchema, nomeColaboradorSchema, permissaoEnum } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 import bcrypt from 'bcryptjs'
 
 // Etapa fix/secure-password-reset: reset administrativo deixou de gravar uma
@@ -42,6 +43,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  // Fluxo Patrimonial — Demo: colaboradores são dado mestre somente-leitura
+  // na demo — QUALQUER edição (nome, e-mail, senha, status, perfil,
+  // capacidades) é bloqueada por inteiro, sem distinção de campo. Cobre
+  // automaticamente a conta demonstrativa pública (DEMO_ACCOUNT_EMAIL): ela
+  // não é mais um caso especial, é só mais um colaborador. Checado ANTES de
+  // qualquer leitura/validação.
+  const bloqueioMutacao = assertDemoActionAllowed('colaborador:mutar')
+  if (bloqueioMutacao) return bloqueioMutacao
 
   const { id } = await params
 
@@ -236,6 +246,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  const bloqueio = assertDemoActionAllowed('colaborador:mutar')
+  if (bloqueio) return bloqueio
 
   const { id } = await params
 

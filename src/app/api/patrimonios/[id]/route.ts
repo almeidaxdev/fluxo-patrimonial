@@ -5,11 +5,15 @@ import { getValidatedMutationSession } from '@/lib/session-validation'
 import { isPatrimonioOuAdmin } from '@/lib/permissions'
 import { patrimonioSchema } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isPatrimonioOuAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  const bloqueioEdicao = assertDemoActionAllowed('patrimonio:mutar')
+  if (bloqueioEdicao) return bloqueioEdicao
 
   const { id } = await params
 
@@ -54,6 +58,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isPatrimonioOuAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  const bloqueio = assertDemoActionAllowed('patrimonio:mutar')
+  if (bloqueio) return bloqueio
 
   const { id } = await params
 

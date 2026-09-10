@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast'
 // segue a regra de LOGIN (sem mínimo de 8, compatibilidade com senha atual
 // legada) — só checagem de não-vazio, feita pelo próprio `min(1)` abaixo.
 import { senhaNovaSchema } from '@/lib/validations'
+import { useDemoMode } from '@/hooks/use-demo-mode'
 
 const schema = z
   .object({
@@ -35,6 +36,7 @@ interface AlterarSenhaResponse {
 export default function AlterarSenhaPage() {
   const { toast } = useToast()
   const router = useRouter()
+  const demoModeAtivo = useDemoMode()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [showSenhaAtual, setShowSenhaAtual] = useState(false)
@@ -105,6 +107,12 @@ export default function AlterarSenhaPage() {
             </p>
           </div>
         </div>
+
+        {demoModeAtivo && (
+          <div className="mb-5 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl text-sm text-amber-700 dark:text-amber-300">
+            Indisponível na demonstração — trocar a senha aqui encerraria o acesso público à demo.
+          </div>
+        )}
 
         {success && (
           <div className="mb-5 flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-300 animate-fade-in">
@@ -189,7 +197,8 @@ export default function AlterarSenhaPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || demoModeAtivo}
+            title={demoModeAtivo ? 'Indisponível na demonstração.' : undefined}
             className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed mt-2"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}

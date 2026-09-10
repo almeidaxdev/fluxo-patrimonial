@@ -7,9 +7,13 @@ import { useToast } from '@/hooks/use-toast'
 import { CategoriaPatrimonio } from '@/types'
 import { cn } from '@/utils'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useDemoMode } from '@/hooks/use-demo-mode'
+
+const DICA_DEMO = 'Indisponível na demonstração.'
 
 export default function CategoriasPage() {
   const { toast } = useToast()
+  const demoModeAtivo = useDemoMode()
   const [categorias, setCategorias] = useState<CategoriaPatrimonio[]>([])
   const [loading, setLoading] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
@@ -130,8 +134,16 @@ export default function CategoriasPage() {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="flex justify-end">
-        <button onClick={() => setModalAberto(true)} className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+      <div className="flex items-center justify-between">
+        {demoModeAtivo ? (
+          <p className="text-xs text-gray-400">Somente leitura no ambiente de demonstração.</p>
+        ) : <span />}
+        <button
+          onClick={() => setModalAberto(true)}
+          disabled={demoModeAtivo}
+          title={demoModeAtivo ? DICA_DEMO : undefined}
+          className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none"
+        >
           <Plus size={16} /> Nova categoria
         </button>
       </div>
@@ -160,23 +172,25 @@ export default function CategoriasPage() {
                 </span>
                 <button
                   onClick={() => abrirEdicao(c)}
-                  title="Editar"
+                  disabled={demoModeAtivo}
+                  title={demoModeAtivo ? DICA_DEMO : 'Editar'}
                   aria-label="Editar categoria"
-                  className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 transition"
+                  className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
                 ><Pencil size={16} /></button>
                 <button
                   onClick={() => alternarAtivo(c)}
-                  disabled={alternandoIds.has(c.id)}
-                  title={c.ativo ? 'Desativar' : 'Ativar'}
+                  disabled={alternandoIds.has(c.id) || demoModeAtivo}
+                  title={demoModeAtivo ? DICA_DEMO : c.ativo ? 'Desativar' : 'Ativar'}
                   aria-label={c.ativo ? 'Desativar categoria' : 'Ativar categoria'}
                   aria-busy={alternandoIds.has(c.id)}
-                  className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                  className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
                 >{alternandoIds.has(c.id) ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />}</button>
                 <button
                   onClick={() => setRemovendo(c)}
-                  title="Remover"
+                  disabled={demoModeAtivo}
+                  title={demoModeAtivo ? DICA_DEMO : 'Remover'}
                   aria-label="Remover categoria"
-                  className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition"
+                  className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition"
                 ><Trash2 size={16} /></button>
               </div>
             </div>

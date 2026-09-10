@@ -352,8 +352,10 @@ CREATE TYPE "TipoEmailEvento" AS ENUM (
 
 -- PROCESSANDO (Etapa D.2): estado de claim exclusivo do outbox. OBSOLETO
 -- (Etapa D.2 — correção pós-Codex-Review): evento cuja condição de negócio
--- deixou de ser verdadeira antes do envio. Ver src/lib/email/processar-evento.ts.
-CREATE TYPE "StatusEmailEvento" AS ENUM ('PENDENTE', 'PROCESSANDO', 'ENVIADO', 'FALHA', 'OBSOLETO');
+-- deixou de ser verdadeira antes do envio. SUPRIMIDO (Fluxo Patrimonial —
+-- Demo): envio físico desligado por EMAIL_PROVIDER=disabled. Ver
+-- src/lib/email/processar-evento.ts.
+CREATE TYPE "StatusEmailEvento" AS ENUM ('PENDENTE', 'PROCESSANDO', 'ENVIADO', 'FALHA', 'OBSOLETO', 'SUPRIMIDO');
 
 CREATE TABLE "email_eventos" (
     "id" TEXT NOT NULL,

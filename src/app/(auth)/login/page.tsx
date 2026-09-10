@@ -6,10 +6,11 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { registrarAtividade } from '@/lib/idle-session'
 import { Wordmark } from '@/components/ui/Wordmark'
+import { useDemoMode } from '@/hooks/use-demo-mode'
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -23,6 +24,8 @@ export default function LoginPage() {
   const { toast } = useToast()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
+  const demoModeAtivo = useDemoMode()
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -113,6 +116,33 @@ export default function LoginPage() {
     }
   }
 
+  // "Acessar demonstração" (Fluxo Patrimonial — Demo): autentica direto na
+  // conta demonstrativa via POST /api/demo/entrar, sem pedir e-mail/senha.
+  // Só visível quando demoModeAtivo (useDemoMode() consulta
+  // GET /api/demo/status) — a proteção real de qualquer ação sensível
+  // continua sendo server-side, independentemente deste botão existir.
+  async function onAcessarDemo() {
+    setDemoLoading(true)
+    try {
+      const res = await fetch('/api/demo/entrar', { method: 'POST' })
+      const result = await res.json()
+
+      if (!res.ok) {
+        toast({ title: 'Erro ao entrar', description: result.message, variant: 'destructive' })
+        return
+      }
+
+      registrarAtividade(window.localStorage)
+      toast({ title: 'Bem-vindo à demonstração!', description: `Olá, ${result.user.nome}!` })
+      router.push('/lobby')
+      router.refresh()
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao conectar com o servidor.', variant: 'destructive' })
+    } finally {
+      setDemoLoading(false)
+    }
+  }
+
   return (
     <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(15,107,99,0.18)] border border-gray-100 px-6 py-7 sm:px-9 sm:py-10">
       {/* Cabeçalho: wordmark — único no mobile, ver src/app/(auth)/layout.tsx —
@@ -176,6 +206,25 @@ export default function LoginPage() {
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
+
+      {demoModeAtivo && (
+        <>
+          <div className="flex items-center gap-3 my-6">
+            <span className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">ou</span>
+            <span className="h-px flex-1 bg-gray-200" />
+          </div>
+          <button
+            type="button"
+            onClick={onAcessarDemo}
+            disabled={demoLoading}
+            className="w-full flex items-center justify-center gap-2 border border-highlight/40 text-highlight-dark hover:bg-highlight/5 font-semibold py-3 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {demoLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+            {demoLoading ? 'Entrando na demonstração...' : 'Acessar demonstração'}
+          </button>
+        </>
+      )}
 
       <p className="text-center text-gray-500 text-sm mt-6 sm:mt-7">
         Novo por aqui?{' '}

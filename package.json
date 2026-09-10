@@ -57,7 +57,12 @@
     "test:idle-session-timeout": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-idle-session-timeout.ts",
     "test:admin-dashboard-operational": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-admin-dashboard-operational.ts",
     "test:dashboard-personal-filters": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-dashboard-personal-filters.ts",
-    "test:termo-retirada-devolucao": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-termo-retirada-devolucao.ts"
+    "test:termo-retirada-devolucao": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-termo-retirada-devolucao.ts",
+    "test:demo-mode": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-mode.ts",
+    "test:demo-mode-routes": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-mode-routes.ts",
+    "test:email-disabled": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-email-disabled.ts",
+    "test:demo-solicitacoes-limit": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-solicitacoes-limit.ts",
+    "demo:reset": "ts-node --project scripts/tsconfig.json scripts/demo-reset.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

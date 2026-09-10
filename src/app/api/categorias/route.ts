@@ -6,6 +6,7 @@ import { getValidatedMutationSession } from '@/lib/session-validation'
 import { isAdmin } from '@/lib/permissions'
 import { categoriaSchema } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 
 // Qualquer usuário autenticado pode LISTAR categorias (necessário para o
 // formulário de solicitação). Somente administrador pode criar/editar.
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  // Fluxo Patrimonial — Demo: categorias são dado mestre somente-leitura na
+  // demo — criação bloqueada por inteiro (ver src/lib/demo-mode.ts).
+  const bloqueio = assertDemoActionAllowed('categoria:mutar')
+  if (bloqueio) return bloqueio
 
   try {
     const corpo = await parseJsonBody(req)

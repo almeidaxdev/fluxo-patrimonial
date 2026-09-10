@@ -2,6 +2,7 @@
 import { getEmailConfig, EmailConfigError } from './config'
 import { resolvePhysicalRecipient } from './recipient'
 import { createResendProvider } from './providers/resend'
+import { createDisabledProvider } from './providers/disabled'
 import type { EmailConfig } from './config'
 import type { EmailProvider } from './provider'
 import { EmailProviderError } from './provider'
@@ -24,12 +25,27 @@ export interface SendEmailResult {
   physicalRecipient: string
   isTest: boolean
   error?: string
+  /**
+   * `true` quando `success` é `true` mas nenhuma mensagem saiu de fato do
+   * sistema — hoje, só quando `EMAIL_PROVIDER=disabled` (Fluxo Patrimonial
+   * — Demo). Sempre `false` para um envio real confirmado pelo provedor.
+   * O chamador (processar-evento.ts) usa este campo para decidir entre
+   * `EmailEvento.status = 'ENVIADO'` (entrega real) e `'SUPRIMIDO'` (envio
+   * deliberadamente desligado) — nunca tratado como o mesmo desfecho.
+   * Opcional (não `boolean` puro) só para não quebrar mocks de teste
+   * pré-existentes que constroem este objeto sem o campo — ausência é
+   * sempre tratada como `false` (nunca suprimido) por quem lê, nunca como
+   * `true` por omissão; sendEmail() real sempre define explicitamente.
+   */
+  suppressed?: boolean
 }
 
 function getProvider(config: EmailConfig): EmailProvider {
   switch (config.provider) {
     case 'resend':
       return createResendProvider(config)
+    case 'disabled':
+      return createDisabledProvider()
     default:
       throw new EmailConfigError(`Provedor de e-mail não suportado: ${config.provider}`)
   }
@@ -62,6 +78,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       originalRecipient: input.to,
       physicalRecipient: input.to,
       isTest: false,
+      suppressed: false,
       error: err instanceof Error ? err.message : 'Erro de configuração de e-mail desconhecido.',
     }
   }
@@ -75,6 +92,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       originalRecipient: input.to,
       physicalRecipient: input.to,
       isTest: false,
+      suppressed: false,
       error: err instanceof Error ? err.message : 'Erro ao resolver destinatário de e-mail.',
     }
   }
@@ -96,6 +114,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       originalRecipient: recipient.original,
       physicalRecipient: recipient.physical,
       isTest: recipient.isTest,
+      suppressed: config.provider === 'disabled',
     }
   } catch (err) {
     const message =
@@ -108,6 +127,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       originalRecipient: recipient.original,
       physicalRecipient: recipient.physical,
       isTest: recipient.isTest,
+      suppressed: false,
       error: message,
     }
   }

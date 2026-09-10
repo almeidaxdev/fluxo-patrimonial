@@ -10,7 +10,13 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Switch } from '@/components/ui/Switch'
 import { nomeColaboradorSchema, senhaNovaSchema, LIMITES_INPUT } from '@/lib/validations'
+import { useDemoMode } from '@/hooks/use-demo-mode'
 import { cn } from '@/utils'
+
+// Ambiente de demonstração (ver docs/DEMO_MODE.md): mensagem curta anexada
+// ao tooltip de qualquer controle desabilitado por DEMO_MODE — proteção
+// real sempre server-side (src/lib/demo-mode.ts); isto é só UX.
+const DICA_DEMO = 'Indisponível na demonstração.'
 
 // Checagem client-side de FORMATO apenas (nunca de domínio permitido — essa
 // lista vem de ALLOWED_EMAIL_DOMAINS, uma env var server-only que não chega
@@ -349,6 +355,7 @@ function ColaboradorModal({ user, gestores, onClose, onSave }: ColaboradorModalP
 
 export default function ColaboradoresPage() {
   const { toast } = useToast()
+  const demoModeAtivo = useDemoMode()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   // Etapa perf/system-optimization: `buscaInput` reflete cada tecla
@@ -444,9 +451,17 @@ export default function ColaboradoresPage() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Users size={22} className="text-brand" /> Colaboradores
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} colaborador(es) cadastrado(s)</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {total} colaborador(es) cadastrado(s)
+            {demoModeAtivo && <span className="text-gray-400"> · Somente leitura no ambiente de demonstração.</span>}
+          </p>
         </div>
-        <button onClick={() => setModal({ open: true, user: null })} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-xl transition shadow-sm">
+        <button
+          onClick={() => setModal({ open: true, user: null })}
+          disabled={demoModeAtivo}
+          title={demoModeAtivo ? DICA_DEMO : undefined}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-xl transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand"
+        >
           <Plus size={16} /> Novo colaborador
         </button>
       </div>
@@ -507,13 +522,28 @@ export default function ColaboradoresPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setModal({ open: true, user: u })} className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-600 transition" title="Editar permissão">
+                          <button
+                            onClick={() => setModal({ open: true, user: u })}
+                            disabled={demoModeAtivo}
+                            className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-gray-400 hover:text-blue-600 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                            title={demoModeAtivo ? DICA_DEMO : 'Editar permissão'}
+                          >
                             <Pencil size={15} />
                           </button>
-                          <button onClick={() => setResetDialog({ open: true, id: u.id, nome: u.nome })} className="p-2 rounded-lg hover:bg-yellow-50 dark:hover:bg-yellow-950 text-gray-400 hover:text-yellow-600 transition" title="Redefinir senha">
+                          <button
+                            onClick={() => setResetDialog({ open: true, id: u.id, nome: u.nome })}
+                            disabled={demoModeAtivo}
+                            className="p-2 rounded-lg hover:bg-yellow-50 dark:hover:bg-yellow-950 text-gray-400 hover:text-yellow-600 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                            title={demoModeAtivo ? DICA_DEMO : 'Redefinir senha'}
+                          >
                             <KeyRound size={15} />
                           </button>
-                          <button onClick={() => setDeleteDialog({ open: true, id: u.id, nome: u.nome })} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-600 transition" title="Deletar">
+                          <button
+                            onClick={() => setDeleteDialog({ open: true, id: u.id, nome: u.nome })}
+                            disabled={demoModeAtivo}
+                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-gray-400 hover:text-red-600 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                            title={demoModeAtivo ? DICA_DEMO : 'Deletar'}
+                          >
                             <Trash2 size={15} />
                           </button>
                         </div>

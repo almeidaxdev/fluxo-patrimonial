@@ -104,8 +104,14 @@ export interface ProcessarEmailEventoOptions {
  *   como `status: 'OBSOLETO'`, `erro: null`, `enviadoEm: null` — estado
  *   terminal dedicado (não FALHA: não houve erro técnico), nunca
  *   reprocessado automaticamente.
+ * - SUPRIMIDO (Fluxo Patrimonial — Demo): `sendEmail()` reportou
+ *   `success: true` e `suppressed: true` (EMAIL_PROVIDER=disabled) — o
+ *   provedor nunca foi chamado de verdade, nenhuma mensagem saiu do
+ *   sistema. Persistido como `status: 'SUPRIMIDO'`, `erro: null`,
+ *   `enviadoEm: null` — nunca confundido com ENVIADO (que implica entrega
+ *   real confirmada pelo provedor).
  */
-export type ResultadoProcessamento = 'ENVIADO' | 'FALHA' | 'NAO_REIVINDICADO' | 'PERSISTENCIA_FALHOU' | 'OBSOLETO'
+export type ResultadoProcessamento = 'ENVIADO' | 'FALHA' | 'NAO_REIVINDICADO' | 'PERSISTENCIA_FALHOU' | 'OBSOLETO' | 'SUPRIMIDO'
 
 // Este limite é uma defesa extra contra mensagens inesperadamente grandes
 // (ex.: payload de erro bruto de rede) indo parar na coluna `erro` — tanto
@@ -241,6 +247,26 @@ async function marcarObsoleto(eventoId: string): Promise<void> {
 }
 
 /**
+ * Persiste SUPRIMIDO (Fluxo Patrimonial — Demo, EMAIL_PROVIDER=disabled).
+ * Mesma postura de falha das duas funções acima: se a própria persistência
+ * falhar, o evento fica como estava (PROCESSANDO) — nunca inventa um
+ * status não confirmado, nunca propaga, nunca faz retry recursivo.
+ */
+async function marcarSuprimido(eventoId: string): Promise<void> {
+  try {
+    await prisma.emailEvento.update({
+      where: { id: eventoId },
+      data: { status: 'SUPRIMIDO', erro: null, enviadoEm: null },
+    })
+  } catch (erroAoAtualizar) {
+    console.error(
+      `Falha ao registrar SUPRIMIDO no EmailEvento ${eventoId} — evento permanece PROCESSANDO:`,
+      erroAoAtualizar instanceof Error ? erroAoAtualizar.message : erroAoAtualizar
+    )
+  }
+}
+
+/**
  * Processa um EmailEvento: reivindica com exclusividade (PENDENTE →
  * PROCESSANDO), resolve o destinatário, monta a mensagem via `build` e
  * envia através de sendEmail() (única porta de saída para provedores —
@@ -345,6 +371,14 @@ export async function processarEmailEvento(
   if (!resultado.success) {
     await marcarFalha(eventoId, new Error(resultado.error ?? 'Erro desconhecido ao enviar e-mail.'))
     return 'FALHA'
+  }
+
+  if (resultado.suppressed) {
+    // EMAIL_PROVIDER=disabled: `success: true`, mas o provedor NUNCA foi
+    // chamado de verdade — persistido como SUPRIMIDO, nunca como ENVIADO
+    // (que implicaria entrega real confirmada).
+    await marcarSuprimido(eventoId)
+    return 'SUPRIMIDO'
   }
 
   // Entrega CONFIRMADA pelo provedor a partir daqui. Uma falha ao

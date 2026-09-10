@@ -5,11 +5,15 @@ import { getValidatedMutationSession } from '@/lib/session-validation'
 import { isAdmin } from '@/lib/permissions'
 import { categoriaSchema } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  const bloqueioEdicao = assertDemoActionAllowed('categoria:mutar')
+  if (bloqueioEdicao) return bloqueioEdicao
 
   const { id } = await params
 
@@ -48,6 +52,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  const bloqueio = assertDemoActionAllowed('categoria:mutar')
+  if (bloqueio) return bloqueio
 
   const { id } = await params
 

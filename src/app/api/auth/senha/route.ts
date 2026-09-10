@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth'
 import { respostaSessaoInvalida } from '@/lib/session-validation'
 import { senhaNovaSchema, senhaDentroDoLimiteBcrypt } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 import bcrypt from 'bcryptjs'
 
 interface AlterarSenhaBody {
@@ -13,6 +14,13 @@ interface AlterarSenhaBody {
 }
 
 export async function PATCH(req: NextRequest) {
+  // Fluxo Patrimonial — Demo: trocar a própria senha derrubaria o acesso
+  // público à demo (o visitante seguinte não conseguiria mais entrar com a
+  // credencial compartilhada) — bloqueado incondicionalmente, antes mesmo
+  // de checar a sessão.
+  const bloqueio = assertDemoActionAllowed('auth:alterar-senha-propria')
+  if (bloqueio) return bloqueio
+
   const session = await getSession()
   // Etapa security/session-revocation: mesma regra de
   // getValidatedMutationSession() (token sem a claim `versaoSessao` — emitido

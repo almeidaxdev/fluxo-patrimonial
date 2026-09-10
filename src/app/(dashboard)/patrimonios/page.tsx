@@ -7,8 +7,12 @@ import { useToast } from '@/hooks/use-toast'
 import { CategoriaPatrimonio, Patrimonio } from '@/types'
 import { cn } from '@/utils'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useDemoMode } from '@/hooks/use-demo-mode'
+
+const DICA_DEMO = 'Indisponível na demonstração.'
 
 export default function PatrimoniosPage() {
+  const demoModeAtivo = useDemoMode()
   const { toast } = useToast()
   const [patrimonios, setPatrimonios] = useState<Patrimonio[]>([])
   const [categorias, setCategorias] = useState<CategoriaPatrimonio[]>([])
@@ -211,10 +215,18 @@ export default function PatrimoniosPage() {
             {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
-        <button onClick={() => setModalAberto(true)} className="flex items-center justify-center gap-2 px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+        <button
+          onClick={() => setModalAberto(true)}
+          disabled={demoModeAtivo}
+          title={demoModeAtivo ? DICA_DEMO : undefined}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none"
+        >
           <Plus size={16} /> Novo bem
         </button>
       </div>
+      {demoModeAtivo && (
+        <p className="text-xs text-gray-400 -mt-2">Somente leitura no ambiente de demonstração.</p>
+      )}
 
       {loading ? (
         <div className="space-y-2">
@@ -248,27 +260,29 @@ export default function PatrimoniosPage() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => abrirEdicao(p)}
-                          title="Editar"
+                          disabled={demoModeAtivo}
+                          title={demoModeAtivo ? DICA_DEMO : 'Editar'}
                           aria-label="Editar bem patrimonial"
-                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 transition"
+                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
                           onClick={() => alternarAtivo(p)}
-                          disabled={alternandoIds.has(p.id)}
-                          title={p.ativo ? 'Desativar' : 'Ativar'}
+                          disabled={alternandoIds.has(p.id) || demoModeAtivo}
+                          title={demoModeAtivo ? DICA_DEMO : p.ativo ? 'Desativar' : 'Ativar'}
                           aria-label={p.ativo ? 'Desativar bem patrimonial' : 'Ativar bem patrimonial'}
                           aria-busy={alternandoIds.has(p.id)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                          className="p-2 rounded-lg text-gray-400 hover:text-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
                         >
                           {alternandoIds.has(p.id) ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />}
                         </button>
                         <button
                           onClick={() => setRemovendo(p)}
-                          title="Remover"
+                          disabled={demoModeAtivo}
+                          title={demoModeAtivo ? DICA_DEMO : 'Remover'}
                           aria-label="Excluir bem patrimonial"
-                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition"
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400 transition"
                         >
                           <Trash2 size={16} />
                         </button>

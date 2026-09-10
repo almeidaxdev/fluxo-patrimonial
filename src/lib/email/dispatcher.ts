@@ -60,12 +60,19 @@ export interface ResumoDispatch {
    */
   obsoletos: number
   /**
-   * Catch-all para "não terminou enviado, falha nem obsoleto": tipo ainda
-   * sem template nesta fase, solicitação não encontrada, erro inesperado
-   * no lote, evento já reivindicado por outro chamador entre a busca e o
-   * claim (NAO_REIVINDICADO — não conta em `processados`), ou entrega
-   * confirmada com persistência incerta (PERSISTENCIA_FALHOU — conta em
-   * `processados`, mas não tem contador próprio nesta fase).
+   * Terminaram SUPRIMIDO (Fluxo Patrimonial — Demo, EMAIL_PROVIDER=disabled):
+   * processados com sucesso, mas o envio físico foi deliberadamente
+   * desligado — nunca contam em `enviados` (que implica entrega real).
+   * Contam em `processados` (houve claim efetivo).
+   */
+  suprimidos: number
+  /**
+   * Catch-all para "não terminou enviado, falha, obsoleto nem suprimido":
+   * tipo ainda sem template nesta fase, solicitação não encontrada, erro
+   * inesperado no lote, evento já reivindicado por outro chamador entre a
+   * busca e o claim (NAO_REIVINDICADO — não conta em `processados`), ou
+   * entrega confirmada com persistência incerta (PERSISTENCIA_FALHOU —
+   * conta em `processados`, mas não tem contador próprio nesta fase).
    */
   ignorados: number
 }
@@ -325,6 +332,7 @@ export async function processarEmailsPendentes(limite: number = LOTE_PADRAO): Pr
     enviados: 0,
     falhas: 0,
     obsoletos: 0,
+    suprimidos: 0,
     ignorados: 0,
   }
 
@@ -349,6 +357,7 @@ export async function processarEmailsPendentes(limite: number = LOTE_PADRAO): Pr
       if (resultado === 'ENVIADO') resumo.enviados++
       else if (resultado === 'FALHA') resumo.falhas++
       else if (resultado === 'OBSOLETO') resumo.obsoletos++
+      else if (resultado === 'SUPRIMIDO') resumo.suprimidos++
       else resumo.ignorados++ // NAO_REIVINDICADO ou PERSISTENCIA_FALHOU
     } catch (err) {
       console.error(`Dispatcher: falha inesperada ao processar EmailEvento ${evento.id}:`, err instanceof Error ? err.message : err)

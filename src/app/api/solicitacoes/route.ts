@@ -27,6 +27,8 @@ import {
 } from '@/lib/email/payloads/solicitacao-aguardando-patrimonio'
 import { deduplicarDestinatarios, resolverEmailPatrimonioOuNull } from '@/lib/email/destinatarios'
 import { PeriodoSolicitacao, StatusSolicitacao } from '@/types'
+import { isDemoModeAtivo, getDemoMaxSolicitacoes, respostaLimiteSolicitacoesDemo } from '@/lib/demo-mode'
+import { checkSensitiveRateLimit, RATE_LIMIT_RETRY_AFTER_SECONDS, RATE_LIMIT_RESPONSE_BODY } from '@/lib/rate-limit'
 
 const includePadrao = {
   solicitante: { select: { id: true, nome: true, email: true } },
@@ -206,6 +208,43 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
+
+  // Fluxo Patrimonial — Demo: duas proteções ADICIONAIS, ativas SOMENTE
+  // quando DEMO_MODE=true (DEMO_MODE=false preserva este handler byte a
+  // byte em relação a antes desta etapa). Nunca aplicadas a nenhuma outra
+  // ação do fluxo (aprovação/separação/retirada/devolução/cancelamento/
+  // assinatura) — só à CRIAÇÃO, que é o único ponto por onde um visitante
+  // consegue fazer o volume de dados crescer sem limite.
+  if (isDemoModeAtivo()) {
+    // 1) Rate limit por sessão (mesma infraestrutura de login/cadastro —
+    // ver src/lib/rate-limit.ts; best-effort/fail-open, nunca uma barreira
+    // absoluta — ver docs/DEMO_MODE.md). Identificador é o usuário
+    // AUTENTICADO (não IP): todo visitante da demo pública compartilha a
+    // MESMA conta (ver POST /api/demo/entrar), então um balde por conta é
+    // exatamente o comportamento desejado aqui.
+    const { limited } = await checkSensitiveRateLimit({
+      request: req,
+      namespace: 'demo-solicitacoes-criar',
+      identifier: validacao.user.id,
+    })
+    if (limited) {
+      return NextResponse.json(RATE_LIMIT_RESPONSE_BODY, {
+        status: 429,
+        headers: { 'Retry-After': String(RATE_LIMIT_RETRY_AFTER_SECONDS) },
+      })
+    }
+
+    // 2) Limite global independente (defesa em profundidade — nunca
+    // confia só no rate limit acima, que pode estar fail-open por falta de
+    // configuração no Firewall). Não precisa ser perfeito sob concorrência
+    // extrema (ver docs/DEMO_MODE.md) — é uma válvula de segurança para o
+    // contexto de demo, não uma garantia matemática; o reset periódico é
+    // quem de fato restaura o volume ao dataset original.
+    const totalAtual = await prisma.solicitacao.count()
+    if (totalAtual >= getDemoMaxSolicitacoes()) {
+      return respostaLimiteSolicitacoesDemo()
+    }
+  }
 
   try {
     const corpo = await parseJsonBody(req)

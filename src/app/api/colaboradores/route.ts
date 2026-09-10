@@ -7,6 +7,7 @@ import { isAdmin } from '@/lib/permissions'
 import { emailPermitidoSchema, nomeColaboradorSchema, senhaNovaSchema, permissaoEnum, buscaSchema } from '@/lib/validations'
 import { parsePaginacao } from '@/lib/query-params'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 import bcrypt from 'bcryptjs'
 
 // Etapa security/session-revocation: GET "privilegiado" (seção B da
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest) {
   const validacao = await getValidatedMutationSession()
   if (!validacao.valido) return validacao.resposta
   if (!isAdmin(validacao.user)) return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+
+  // Fluxo Patrimonial — Demo: colaboradores são dado mestre somente-leitura
+  // na demo — criação bloqueada por inteiro (ver src/lib/demo-mode.ts).
+  const bloqueio = assertDemoActionAllowed('colaborador:mutar')
+  if (bloqueio) return bloqueio
 
   try {
     const corpo = await parseJsonBody<{

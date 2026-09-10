@@ -6,8 +6,15 @@ import bcrypt from 'bcryptjs'
 import { checkSensitiveRateLimit, extrairIpCliente, RATE_LIMIT_RETRY_AFTER_SECONDS, RATE_LIMIT_RESPONSE_BODY } from '@/lib/rate-limit'
 import { emailPermitidoSchema, nomeColaboradorSchema, senhaNovaSchema } from '@/lib/validations'
 import { parseJsonBody } from '@/lib/http'
+import { assertDemoActionAllowed } from '@/lib/demo-mode'
 
 export async function POST(req: NextRequest) {
+  // Fluxo Patrimonial — Demo: autocadastro criaria contas fora do dataset
+  // controlado pelo reset — bloqueado incondicionalmente, antes de qualquer
+  // outra validação/rate limit.
+  const bloqueio = assertDemoActionAllowed('auth:autocadastro')
+  if (bloqueio) return bloqueio
+
   try {
     const corpo = await parseJsonBody<{ nome?: string; email?: string; senha?: string }>(req)
     if (!corpo.ok) return corpo.resposta
