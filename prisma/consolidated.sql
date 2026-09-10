@@ -44,6 +44,11 @@ CREATE TYPE "StatusSolicitacao" AS ENUM (
   'NAO_RETIRADA'
 );
 
+-- NOVO (Fase 3): origem da solicitação — reserva antecipada (fluxo normal)
+-- ou atendimento imediato (Patrimônio atende o solicitante na hora, sem
+-- reserva prévia). Ver prisma/schema.prisma, enum OrigemSolicitacao.
+CREATE TYPE "OrigemSolicitacao" AS ENUM ('RESERVA', 'ATENDIMENTO_IMEDIATO');
+
 -- =============================================================================
 -- USERS
 -- =============================================================================
@@ -148,6 +153,14 @@ CREATE TABLE "solicitacoes" (
     "notebooks_com_dominio" BOOLEAN,
     "tipo_dominio" "TipoDominio",
     "status" "StatusSolicitacao" NOT NULL DEFAULT 'AGUARDANDO_PATRIMONIO',
+    -- NOVO (Fase 3): origem e controle de antecedência/prazo — ver
+    -- prisma/schema.prisma, model Solicitacao, campos origem/prazoHoras/
+    -- antecedenciaMinutos/dentroDoPrazo/prazoReferenciaEm.
+    "origem" "OrigemSolicitacao" NOT NULL DEFAULT 'RESERVA',
+    "prazo_horas" INTEGER,
+    "antecedencia_minutos" INTEGER,
+    "dentro_do_prazo" BOOLEAN,
+    "prazo_referencia_em" TIMESTAMP(3),
     "motivo_rejeicao_gestor" TEXT,
     "motivo_rejeicao_patrimonio" TEXT,
     "gestor_decisao_em" TIMESTAMP(3),
@@ -177,6 +190,7 @@ CREATE INDEX "solicitacoes_data_idx" ON "solicitacoes"("data");
 CREATE INDEX "solicitacoes_solicitante_id_idx" ON "solicitacoes"("solicitante_id");
 CREATE INDEX "solicitacoes_gestor_id_idx" ON "solicitacoes"("gestor_id");
 CREATE INDEX "solicitacoes_tipo_emprestimo_idx" ON "solicitacoes"("tipo_emprestimo");
+CREATE INDEX "solicitacoes_origem_idx" ON "solicitacoes"("origem");
 
 ALTER TABLE "solicitacoes" ADD CONSTRAINT "solicitacoes_solicitante_id_fkey" FOREIGN KEY ("solicitante_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "solicitacoes" ADD CONSTRAINT "solicitacoes_criado_por_id_fkey" FOREIGN KEY ("criado_por_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
