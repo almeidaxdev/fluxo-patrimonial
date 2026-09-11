@@ -1,5 +1,7 @@
 # Fluxos — Fluxo Patrimonial
 
+[← Documentação](README.md)
+
 Diagramas baseados exclusivamente nos estados e transições reais de `src/lib/status.ts` (`TRANSICOES_PERMITIDAS`) e nas rotas de `src/app/api/solicitacoes/**`. Estados entre parênteses são terminais.
 
 ## Fluxo interno
@@ -79,10 +81,11 @@ Não há integração automática com sistema externo de assinatura eletrônica 
 ## Fluxo de e-mails (visão de outbox)
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Ação de negócio dentro de uma transaction] --> B[Criação do EmailEvento: PENDENTE]
     B --> C{Claim atômico\nupdateMany PENDENTE→PROCESSANDO}
     C -->|Só um processo vence| D[PROCESSANDO]
+    D -->|Provedor disabled| H[SUPRIMIDO]
     D -->|Envio ao Resend OK| E[ENVIADO]
     D -->|Falha no envio| F[FALHA]
     D -->|Superado por estado mais novo\nda solicitação| G[OBSOLETO]

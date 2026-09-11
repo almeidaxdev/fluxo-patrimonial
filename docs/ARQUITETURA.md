@@ -1,5 +1,28 @@
 # Arquitetura — Fluxo Patrimonial
 
+[← Documentação](README.md) · [Demo pública](DEMO_MODE.md)
+
+## Visão da arquitetura
+
+```mermaid
+flowchart TD
+    UI["Frontend<br/>Next.js · React · TypeScript"]
+    API["API Routes / Server<br/>Validação e autorização"]
+    ORM["Prisma ORM"]
+    DB[("PostgreSQL / Supabase")]
+    UI --> API --> ORM --> DB
+
+    JWT["Autenticação JWT"] -.-> API
+    DEMO["Modo Demo<br/>Dados mestres somente leitura<br/>Limite adicional"] -.-> API
+    RATE["Rate limiting<br/>Vercel Firewall"] -.-> API
+
+    CRON["Vercel Cron"] --> RESET["Reset autenticado"]
+    RESET --> DATASET["Restauração do dataset fictício"]
+    DATASET --> ORM
+```
+
+Supabase é usado como PostgreSQL gerenciado, sem Supabase Auth. JWT e autorização pertencem ao backend. As duas camadas de Firewall (borda e SDK), o limite adicional e o reset são detalhados em [Modo Demo](DEMO_MODE.md).
+
 ## Estrutura geral
 
 ```
@@ -67,7 +90,7 @@ prisma/
 Agrupadas por domínio (não é uma cópia de código — só finalidade, autenticação e efeitos principais):
 
 ### Autenticação (`/api/auth/**`)
-- `POST /login`, `POST /logout`, `POST /cadastro` — únicas rotas públicas (junto com as páginas `(auth)/`). `login` normaliza (trim + lowercase) o e-mail antes do rate limit e da consulta ao banco (Etapa `fix/collaborator-session-sync`). `cadastro` cria sempre com `permissao: 'colaborador'` (sem caminho de auto-elevação) e só aceita e-mail de domínio permitido (`@example.com`, `emailPermitidoSchema`).
+- `POST /login`, `POST /logout`, `POST /cadastro` — rotas públicas de autenticação (junto com as páginas `(auth)/`). A demo também expõe status/entrada, e o reset utiliza autenticação própria por secret. `login` normaliza (trim + lowercase) o e-mail antes do rate limit e da consulta ao banco (Etapa `fix/collaborator-session-sync`). `cadastro` cria sempre com `permissao: 'colaborador'` (sem caminho de auto-elevação) e só aceita e-mail de domínio permitido (`@example.com`, `emailPermitidoSchema`).
 - `GET /me` — **revalida no banco** (`getValidatedMutationSession()`, Etapa `fix/collaborator-session-sync`) — diferente de `logout` (não revalida, não precisa). Fonte de verdade dos dados ATUAIS da conta para o frontend (`AuthProvider`) — ver "Revogação de sessão".
 - `PATCH /senha` — troca da própria senha. Revalida a sessão (reaproveitando a própria query que já precisa do hash atual, sem uma segunda consulta) e **incrementa `versaoSessao`** do próprio usuário, encerrando a sessão atual (cookie limpo, força novo login) — ver "Revogação de sessão".
 
@@ -109,7 +132,7 @@ Singleton em `src/lib/prisma.ts`, reutilizado via `globalThis` em desenvolviment
 
 Usado exclusivamente como **PostgreSQL gerenciado** — a aplicação não usa o cliente `supabase-js`; todo acesso passa pelo Prisma, com a connection string de servidor (não a `anon key`). `DATABASE_URL` aponta para o pooler Supavisor em modo transação (porta 6543, `pgbouncer=true`); `DIRECT_URL` para o pooler em modo sessão (porta 5432), usado por operações que precisam de conexão persistente (ex.: `prisma generate`/introspecção).
 
-**Data API (PostgREST/GraphQL) desabilitada — decisão arquitetural deliberada.** Auditoria confirmou que a aplicação não usa, em nenhum ponto do código: `@supabase/supabase-js`, a Data API REST (`/rest/v1`) ou GraphQL (`/graphql/v1`), Supabase Auth, Storage, Realtime ou Edge Functions — todo o acesso a dado é `Browser → Next.js → API Routes (server) → Prisma → Postgres via Supavisor`, um protocolo de banco nativo, nunca HTTP/REST. Com a Data API desabilitada, esse vetor de exposição deixa de existir por completo: mesmo que a `anon key` do projeto algum dia se torne conhecida por alguém fora do time, não há mais um endpoint REST/GraphQL escutando para ela ser usada contra o banco. Prisma **não depende da Data API de forma alguma** — a remoção não teve nenhum impacto na aplicação (conexão via `DATABASE_URL`/`DIRECT_URL` é inalterada).
+**Data API (PostgREST/GraphQL): não utilizada pela aplicação.** A documentação original registra a opção de mantê-la desabilitada no ambiente; esse estado depende do painel, não é imposto pelo repositório. Auditoria confirmou que a aplicação não usa, em nenhum ponto do código: `@supabase/supabase-js`, a Data API REST (`/rest/v1`) ou GraphQL (`/graphql/v1`), Supabase Auth, Storage, Realtime ou Edge Functions — todo o acesso a dado é `Browser → Next.js → API Routes (server) → Prisma → Postgres via Supavisor`, um protocolo de banco nativo, nunca HTTP/REST. Prisma não depende da Data API: a conexão utiliza `DATABASE_URL`/`DIRECT_URL`. Qualquer exposição futura via Data API exige revisão própria de grants e policies; o uso do Prisma não comprova por si só a configuração externa de acesso.
 
 **RLS (Row Level Security) não é o mecanismo de autorização desta aplicação.** Toda autorização acontece no backend Next.js, a partir do JWT próprio (ver seção "Autenticação" abaixo e `src/lib/permissions.ts`) — nunca de policies de banco. Isso é intencional e coerente com a Data API desabilitada: como a conexão do Prisma usa a role de servidor (`postgres`, com acesso pleno — não `anon`/`authenticated`), RLS não afeta o Prisma mesmo que fosse habilitado. Se a Data API for reativada no futuro por algum motivo, **RLS e grants explícitos precisam ser desenhados e aplicados a cada tabela ANTES dela ser exposta** — reativar a Data API só para contornar outra configuração, sem esse desenho, reabriria o vetor descrito acima.
 
@@ -117,9 +140,9 @@ Usado exclusivamente como **PostgreSQL gerenciado** — a aplicação não usa o
 
 Deploy automático a partir de `main`; funções serverless para as API Routes; `postinstall: prisma generate` garante o Client atualizado a cada build, sem depender de um passo manual. Região das funções não está fixada no código (`next.config.js` não declara `region`) — configurada no painel do projeto.
 
-## Resend
+## E-mails
 
-Ver `docs/EMAILS.md` para o pipeline completo. Resumo: `src/lib/email/send-email.ts` é o único ponto de saída para o provedor; nunca lança exceção (sempre retorna `{ success: boolean, ... }`), para que uma falha de e-mail nunca comprometa a transação de negócio que o originou.
+Há dois provedores: Resend para envio real e `disabled` para supressão de envio na demo. Ver [E-mails](EMAILS.md) para o pipeline completo. Resumo: `src/lib/email/send-email.ts` é o único ponto de saída para o provedor; nunca lança exceção (sempre retorna `{ success: boolean, ... }`), para que uma falha de e-mail nunca comprometa a transação de negócio que o originou.
 
 ## Security headers
 
@@ -127,26 +150,24 @@ Ver `docs/EMAILS.md` para o pipeline completo. Resumo: `src/lib/email/send-email
 
 ## Rate limiting
 
-Proteção contra força bruta/abuso em ações sensíveis (`login`, `cadastro`, reenvio de assinatura) via **Vercel Firewall + `@vercel/firewall`** (SDK) — nunca memória de processo (`Map`/`Set`/cache local), que não funcionaria de forma confiável em serverless com múltiplas instâncias, e nunca o próprio Supabase (evita adicionar round-trip/carga ao banco só para isso).
+A demo pública tem uma regra de borda do Vercel Firewall para `POST /api/solicitacoes`: **10 requisições / 60 segundos / IP**, conforme validação do mantenedor em 11/09/2026.
 
-O plano atual do projeto na Vercel é **Hobby**, que permite **apenas 1 regra de Rate Limit por projeto**. Por isso, em vez de uma regra por ação, o projeto usa um **único Rate Limit ID** (`fluxo-patrimonial-sensitive-actions`) e separa as ações por **namespace dentro da própria `rateLimitKey`** — `login:<hash>`, `cadastro:<hash>`, `assinatura:<hash>` — de modo que os contadores nunca se somam entre ações diferentes, mesmo compartilhando a mesma janela/limite da regra (Fixed Window, 600s, 8 requests).
+Separadamente, [src/lib/rate-limit.ts](../src/lib/rate-limit.ts) utiliza `@vercel/firewall`, com o Rate Limit ID `fluxo-patrimonial-sensitive-actions`. O código separa ações por namespace e identificador normalizado com hash SHA-256.
 
-> **Status da regra no Firewall**: o código já está preparado para chamar o Rate Limit ID `fluxo-patrimonial-sensitive-actions`, mas a regra correspondente **ainda não foi criada/publicada no Dashboard da Vercel** — isso é sempre feito manualmente (Firewall → Custom Rules), **nunca** por código/CLI/automação. Enquanto a regra não existir, `checkRateLimit()` recebe `404` do Firewall e devolve `{ rateLimited: false }` — ou seja, o rate limiting fica **inerte** (todas as chamadas passam normalmente), sem quebrar login/cadastro/reenvio de assinatura. A proteção só passa a valer de fato depois que a regra for criada e publicada manualmente, com os parâmetros exatos descritos em `docs/DEPLOY.md`.
+| Ação | Identificador do helper |
+|---|---|
+| Login | E-mail normalizado |
+| Cadastro | IP |
+| Envio/reenvio de link de assinatura | Solicitação e usuário |
+| Entrada na demo | IP |
+| Reset manual | IP |
+| Criação de solicitações na demo | Usuário autenticado |
 
-Helper central: `src/lib/rate-limit.ts` (`checkSensitiveRateLimit()`) — nunca duplicar a lógica em cada rota. Identificadores (e-mail, IP) são sempre normalizados e passados por SHA-256 antes de virar a chave, para nunca aparecer em texto puro em nenhum log/observability do Firewall. Aplicado em:
+A regra correspondente ao SDK é configurada no painel; os parâmetros documentados para ela são 8 requisições em 600 segundos. A confirmação da regra de borda de 10/60 não confirma essa configuração adicional.
 
-- `POST /api/auth/login` — chave por CONTA (hash do e-mail normalizado), roda **antes** de `prisma.user.findUnique`/`bcrypt.compare` (uma tentativa bloqueada não gasta round-trip ao banco nem CPU de bcrypt).
-- `POST /api/auth/cadastro` — chave por IP (`x-real-ip`, com fallback para o primeiro IP de `x-forwarded-for`) — a restrição de domínio permitido (ALLOWED_EMAIL_DOMAINS) (`@example.com`) fica para uma etapa funcional futura, então hoje um limite por conta não conteria alguém testando muitos e-mails diferentes.
-- `POST /api/solicitacoes/[id]/assinatura` (envio/reenvio) — chave por `(solicitacaoId + usuário autenticado)`. Distinto da idempotência/concorrência já existente nessa rota (dois gates independentes, ver seção Transactions/Concorrência) — aqueles impedem dois envios físicos para a MESMA tentativa concorrente; o rate limit contém reenvios repetidos ao longo do TEMPO.
-- Reset de senha (self-service e administrativo) **deliberadamente não recebeu** rate limit dedicado nesta etapa — self-service só é explorável por quem já tem uma sessão roubada, e o reset administrativo já é admin-only — uma regra adicional seria redundante.
+Em exceções de infraestrutura, o helper retorna `limited: false` (**fail-open**); um bloqueio retornado pelo SDK é respeitado. A regra de domínio permitido, já implementada em `validations.ts`, é um controle diferente e adota fail-closed na ausência de configuração válida.
 
-**Comportamento em erro real do Firewall** (rede, resposta inesperada): fail-open — `checkSensitiveRateLimit()` nunca propaga a exceção, registra `console.error` (sem identificador bruto) e segue a requisição normalmente, para uma indisponibilidade temporária do Firewall nunca virar indisponibilidade total de login/cadastro. Uma determinação REAL de bloqueio (`rateLimited: true`) sempre é respeitada (fail-closed, `429`).
-
-**Ambiente local (`next dev`)**: `@vercel/firewall` detecta `NODE_ENV !== 'production'` e devolve `{ rateLimited: false }` imediatamente (só um `console.warn`), sem tentar nenhuma chamada de rede — nunca quebra `npm run dev`/testes/build por falta de infraestrutura Vercel.
-
-## Security headers
-
-`next.config.js` (`headers()`) aplica, a **todas** as rotas (páginas e API): `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` e `Permissions-Policy` bloqueando câmera, microfone, geolocalização, pagamento, USB, fullscreen e Clipboard API (nenhum é usado em nenhuma tela — confirmado por auditoria). `Strict-Transport-Security: max-age=31536000; includeSubDomains` (sem `preload`) é adicionado só quando `NODE_ENV === 'production'`. **Sem `Content-Security-Policy` nesta etapa** — decisão deliberada: o `ThemeProvider` (`next-themes`) injeta um script inline no `<head>` para evitar flash de tema errado antes da hidratação, o que quebraria um `script-src` estrito sem a infraestrutura de `nonce` (inexistente hoje); e não há endpoint de `report-uri`/`report-to` configurado para validar uma policy em modo `Report-Only` sem ruído. Ver `docs/MANUTENCAO.md` para o plano futuro de CSP.
+A demo também verifica `DEMO_MAX_SOLICITACOES` antes da criação, independentemente do Firewall, e restaura o dataset por Vercel Cron. Consulte [proteção contra abuso](DEMO_MODE.md#proteção-contra-abuso) para cobertura, limitações de concorrência e separação entre as camadas.
 
 ## Autenticação
 

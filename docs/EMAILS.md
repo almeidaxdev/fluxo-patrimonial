@@ -1,13 +1,15 @@
 # E-mails — Fluxo Patrimonial
 
+[← Documentação](README.md) · [Variáveis](VARIAVEIS_AMBIENTE.md)
+
 ## Provedor
 
-**Resend**, acessado através de um único ponto de saída: `src/lib/email/send-email.ts`. Nenhum outro módulo do projeto chama a SDK do Resend diretamente — qualquer envio, de qualquer fluxo, passa por essa função. Ela nunca lança exceção: sempre retorna um resultado estruturado (`{ success: boolean, ... }`), justamente para que uma falha de e-mail nunca vire uma exceção que derrube a transação de negócio que o originou.
+**Resend** para envio real e **disabled** para supressão de entrega, acessados através de um único ponto de saída: `src/lib/email/send-email.ts`. Nenhum outro módulo do projeto chama a SDK do Resend diretamente — qualquer envio, de qualquer fluxo, passa por essa função. Ela nunca lança exceção: sempre retorna um resultado estruturado (`{ success: boolean, ... }`), justamente para que uma falha de e-mail nunca vire uma exceção que derrube a transação de negócio que o originou.
 
 ## Variáveis de ambiente (nomes apenas)
 
-- `EMAIL_PROVIDER` — único valor suportado atualmente: `"resend"`.
-- `EMAIL_API_KEY` — credencial do provedor.
+- `EMAIL_PROVIDER` — `"resend"` para envio real ou `"disabled"` para não enviar.
+- `EMAIL_API_KEY` — credencial do provedor, exigida somente com `resend`.
 - `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME` — remetente (nome tem default `"Fluxo Patrimonial"` se ausente).
 - `EMAIL_REPLY_TO` — opcional; sem Reply-To se vazio.
 - `APP_URL` — base para montagem de links usados nos e-mails (ex.: link de assinatura).
@@ -15,14 +17,20 @@
 - `EMAIL_TEST_RECIPIENT` — destino físico único quando `EMAIL_TEST_MODE = "true"` (obrigatório nesse caso, sem fallback para destinatário real).
 - `EMAIL_PATRIMONIO_RECIPIENT` — caixa de grupo do Patrimônio (validada separadamente das demais, no momento de decidir o destinatário — não exige `EMAIL_API_KEY`/`EMAIL_PROVIDER` válidos só para ser checada).
 
-Ver `docs/VARIAVEIS_AMBIENTE.md` para a tabela completa de todas as variáveis do projeto. Nenhum valor real aparece neste documento.
+Ver [Variáveis de ambiente](VARIAVEIS_AMBIENTE.md) para a obrigatoriedade por provedor. Com `disabled`, `APP_URL` continua necessária, mas chave, remetente e configuração de entrega de teste são dispensados. A caixa de grupo é validada separadamente.
+
+## Demo sem envio externo
+
+A demo pública usa `EMAIL_PROVIDER=disabled`, independentemente de `DEMO_MODE`. O provedor não realiza chamadas externas de entrega. O processamento grava o estado terminal **SUPRIMIDO**, com `providerId` igual a `disabled`, sem registrar uma entrega como `ENVIADO`.
+
+`EMAIL_TEST_MODE=true` é diferente: redireciona um envio real para um destinatário de teste. Não deve ser usado como sinônimo de e-mail desabilitado.
 
 ## EMAIL_TEST_MODE — lógico vs. físico
 
 O sistema distingue **destinatário lógico** (quem, na regra de negócio, deveria receber o e-mail — ex.: o solicitante, o gestor, a caixa de grupo do Patrimônio) do **destinatário físico** (para onde o e-mail realmente é entregue pelo provedor).
 
 - Com `EMAIL_TEST_MODE = "true"`: o destinatário lógico é sempre preservado em `EmailEvento.destinatario` e citado no próprio corpo/banner do e-mail ("destinatário original: ..."), mas o envio físico é **sempre** redirecionado para `EMAIL_TEST_RECIPIENT`. Nenhum destinatário real recebe nada nesse modo — usado em homologação para não vazar e-mail de teste a usuários/gestores reais.
-- Com `EMAIL_TEST_MODE` desabilitado (produção): destinatário lógico e físico coincidem.
+- Com `resend` e `EMAIL_TEST_MODE = "false"`: destinatário lógico e físico coincidem.
 
 ## Caixa de grupo do Patrimônio
 
@@ -36,6 +44,7 @@ Quando `EMAIL_PATRIMONIO_RECIPIENT` está ausente ou inválida, o sistema regist
 PENDENTE
   → (claim atômico via updateMany PENDENTE→PROCESSANDO; só um processo vence)
 PROCESSANDO
+  → provedor disabled → SUPRIMIDO
   → sucesso no envio ao Resend → ENVIADO
   → falha no envio → FALHA (tentativas incrementado)
   → evento superado por um estado mais novo da solicitação → OBSOLETO
@@ -45,7 +54,7 @@ Cada linha de `EmailEvento` é criada **dentro da mesma transaction** da ação 
 
 ## Retry
 
-`tentativas` é incrementado a cada tentativa de envio malsucedida. O dispatcher (`processarEmailsPendentes`, em `src/lib/email/dispatcher.ts`) é capaz de reprocessar eventos em `PENDENTE`/`FALHA`, mas **não está agendado**: não há rota que o chame em `src/app/`, nem cron configurado (não há `vercel.json` com cron neste projeto). Ele existe como infraestrutura testada e pronta para ser acionada (manualmente ou por um agendador futuro), não como um processo em execução automática hoje.
+`tentativas` é incrementado a cada tentativa de envio malsucedida. O dispatcher (`processarEmailsPendentes`, em `src/lib/email/dispatcher.ts`) é capaz de reprocessar eventos em `PENDENTE`/`FALHA`, mas **não está agendado para retry**: não há rota que o chame em `src/app/`. O cron presente em `vercel.json` é exclusivo do reset do dataset da demo, não do dispatcher de e-mails. Ele existe como infraestrutura testada e pronta para ser acionada (manualmente ou por um agendador futuro), não como um processo em execução automática hoje.
 
 ## Idempotência
 

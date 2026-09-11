@@ -1,13 +1,17 @@
 # Testes — Fluxo Patrimonial
 
-O projeto usa scripts de teste próprios (`ts-node` + `tsconfig-paths`), sem framework de teste (não usa Jest/Vitest). Cada script sobe um cenário isolado com mocks em memória de Prisma, sessão e envio de e-mail — **sem banco real, sem envio real de e-mail**. Total atual: **46 scripts**, todos registrados em `package.json` sob o prefixo `test:` — contagem tirada diretamente de `package.json` (`Object.keys(scripts).filter(k => k.startsWith('test:')).length`), nunca de memória; recontar sempre que um script for adicionado/removido.
+[← Documentação](README.md)
+
+O projeto usa scripts de teste próprios (`ts-node` + `tsconfig-paths`), sem framework de teste (não usa Jest/Vitest). Cada script sobe um cenário isolado com mocks em memória de Prisma, sessão e envio de e-mail — **sem banco real, sem envio real de e-mail**. Total atual: **56 comandos de teste e validação**, todos registrados em `package.json` sob o prefixo `test:` — contagem tirada diretamente de `package.json` (`Object.keys(scripts).filter(k => k.startsWith('test:')).length`). Essa contagem representa comandos, não casos unitários nem cobertura; deve ser atualizada quando o inventário mudar.
 
 Não há medição de cobertura de código configurada no projeto — nenhuma métrica de "% de cobertura" é reportada aqui porque nenhuma ferramenta a calcula atualmente.
 
 ## Como rodar
 
 ```bash
-npm run test:<nome-do-script>
+npm run test:session-jwt
+npm run test:demo-mode-routes
+npm run test:demo-reset-cron
 ```
 
 Cada script roda isoladamente (não há um runner único tipo `npm test` que execute todos em sequência hoje). Para rodar todos manualmente, execute cada `test:*` listado em `package.json` um a um — o exit code de cada `ts-node` reflete sucesso/falha do respectivo script.
@@ -82,6 +86,23 @@ Simulam duas requisições simultâneas para a mesma transição de status, conf
 - `test:patrimonios-pagination` — paginação real de `GET /api/patrimonios`.
 - `test:patrimonios-disponibilidade` — cálculo de disponibilidade por categoria/data/período.
 - `test:dashboard` — indicadores agregados do dashboard.
+
+## Demo e documentos
+
+| Comando | Finalidade |
+|---|---|
+| `test:termo-retirada-devolucao` | Validação do termo PDF e acesso à rota |
+| `test:demo-mode` | Helpers e bloqueios do modo Demo |
+| `test:demo-mode-routes` | Bloqueios administrativos e preservação do workflow |
+| `test:email-disabled` | Provedor sem envio e estado SUPRIMIDO |
+| `test:demo-solicitacoes-limit` | Limite adicional de solicitações na demo |
+| `test:demo-status-middleware` | Acesso público ao status do modo Demo |
+| `test:demo-reset-middleware` | Tratamento da rota de reset pelo middleware |
+| `test:demo-reset-cron` | Autenticação do GET do cron e separação do POST manual |
+| `test:demo-dataset-reset` | Consistência do dataset compartilhado entre seed e reset |
+| `test:login-demo-ux` | Exibição do acesso demonstrativo e orientação na tela de login |
+
+Execute cada comando com `npm run`. Esses comandos de teste não são o utilitário operacional `npm run demo:reset`, que efetivamente aciona a restauração do ambiente configurado.
 
 ## Antes de cada push
 

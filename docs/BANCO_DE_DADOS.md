@@ -1,5 +1,7 @@
 # Banco de Dados — Fluxo Patrimonial
 
+[← Documentação](README.md)
+
 PostgreSQL (Supabase), acessado exclusivamente via Prisma. Fonte de verdade estrutural: `prisma/schema.prisma` + `prisma/consolidated.sql`. Este documento descreve o schema atual — não é um changelog nem uma proposta de evolução.
 
 ## Modelos
@@ -22,7 +24,7 @@ Entidade central — representa uma reserva/atendimento completo, do pedido inic
 - **Decisão do gestor**: `gestorAprovadoEm`, `motivoRejeicaoGestor`.
 - **Decisão do Patrimônio**: `patrimonioConfirmadoEm`, `motivoRejeicaoPatrimonio`.
 - **Assinatura**: `linkAssinatura`, `assinaturaEnviadaEm`, `assinaturaConfirmadaEm`.
-- **Operacional**: `separadoEm`, `retiradoEm`, `observacoesRetirada`, `devolvidoEm`, `condicaoDevolucao` (`CondicaoDevolucao`), `observacoesDevolucao`, `observacoesDevolucaoLegado` (texto livre pré-migração, nunca reinterpretado como uma condição estruturada), `naoRetiradoEm`.
+- **Operacional**: `separadoEm`, `retiradoEm`, `observacoesRetirada`, `devolvidoEm`, `condicaoDevolucao` (`CondicaoDevolucao`), `observacoesDevolucao`, `devolucaoCondicaoTextoLegado` (texto livre pré-migração, nunca reinterpretado como uma condição estruturada), `naoRetiradoEm`.
 - **Cancelamento**: `canceladoEm`, `canceladoPorId`, `motivoCancelamento`.
 
 Relações: `ItemPatrimonioSolicitacao[]`, `ItemPapelaria[]`, `ItemServicoSolicitacao[]`, `Assinatura?`, `HistoricoSolicitacao[]`, `EmailEvento[]`.
@@ -34,7 +36,7 @@ Associa bens patrimoniais a uma solicitação. Unique `[solicitacaoId, patrimoni
 Item de papelaria livre por solicitação: `descricao`, `quantidade`.
 
 ### TipoServico
-Catálogo administrável de tipos de serviço/movimentação: `nome`, `ativo`, `ordem` (ordenação de exibição).
+Catálogo de tipos de serviço/movimentação, sem rota de mutação nesta base: `nome`, `ativo`, `ordem` (ordenação de exibição).
 
 ### ItemServicoSolicitacao
 Item de serviço vinculado a uma solicitação: `tipoServicoId`, `quantidade`, `ambiente` (obrigatório), `observacao` (opcional).
@@ -63,7 +65,7 @@ Outbox de e-mail transacional. Campos: `solicitacaoId`, `tipo` (`TipoEmailEvento
 | `CondicaoDevolucao` | `SEM_AVARIAS`, `COM_AVARIA`, `DANIFICADO`, `NECESSITA_VERIFICACAO` |
 | `TipoDominio` | `EDUCACIONAL`, `ADMINISTRATIVO` |
 | `TipoEmailEvento` | `SOLICITACAO_AGUARDANDO_GESTOR`, `SOLICITACAO_AGUARDANDO_PATRIMONIO`, `ASSINATURA_PENDENTE`, `RESERVA_CONFIRMADA`, `PRONTA_RETIRADA`, `NAO_RETIRADA`, `CANCELAMENTO`, `REJEICAO_GESTOR`, `REJEICAO_PATRIMONIO` |
-| `StatusEmailEvento` | `PENDENTE`, `PROCESSANDO`, `ENVIADO`, `FALHA`, `OBSOLETO` |
+| `StatusEmailEvento` | `PENDENTE`, `PROCESSANDO`, `ENVIADO`, `FALHA`, `OBSOLETO`, `SUPRIMIDO` |
 
 ## Integridade / constraints
 
@@ -76,7 +78,7 @@ Outbox de e-mail transacional. Campos: `solicitacaoId`, `tipo` (`TipoEmailEvento
 
 ## Data API e RLS
 
-A **Data API do Supabase (PostgREST/GraphQL) está desabilitada** — auditoria confirmou que nenhuma tabela deste schema é acessada por ela; o único caminho de acesso é o Prisma, via conexão Postgres direta (`DATABASE_URL`/`DIRECT_URL`, role de servidor). Por isso, **RLS (Row Level Security) não é usado como mecanismo de autorização** em nenhuma tabela — a autorização é inteiramente responsabilidade do backend Next.js (JWT próprio, `src/lib/permissions.ts`, checagem em cada rota de API — ver `docs/ARQUITETURA.md` e `docs/REGRAS_DE_NEGOCIO.md`), não de policies de banco. RLS habilitado não teria efeito sobre o Prisma de qualquer forma, já que a role de conexão do Prisma não é `anon`/`authenticated` (as roles que a Data API usaria).
+A aplicação **não utiliza a Data API do Supabase (PostgREST/GraphQL)**. A opção de mantê-la desabilitada é uma configuração externa registrada na documentação original, não uma garantia imposta pelo código; o único caminho de acesso é o Prisma, via conexão Postgres direta (`DATABASE_URL`/`DIRECT_URL`, role de servidor). Por isso, **RLS (Row Level Security) não é usado como mecanismo de autorização** em nenhuma tabela — a autorização é inteiramente responsabilidade do backend Next.js (JWT próprio, `src/lib/permissions.ts`, checagem em cada rota de API — ver `docs/ARQUITETURA.md` e `docs/REGRAS_DE_NEGOCIO.md`), não de policies de banco. RLS habilitado não teria efeito sobre o Prisma de qualquer forma, já que a role de conexão do Prisma não é `anon`/`authenticated` (as roles que a Data API usaria).
 
 Se a Data API for reativada no futuro por qualquer motivo, isso **não deve ser feito apenas para contornar outra configuração** — antes de expor qualquer tabela, é necessário desenhar e aplicar RLS + grants explícitos por tabela (nunca uma policy genérica `USING (true)` só para silenciar o Security Advisor).
 
@@ -91,4 +93,8 @@ Recomendação para quem for evoluir o schema neste projeto:
 3. Aplique a alteração manualmente (SQL Editor do banco escolhido), nunca por um comando automático de migração/deploy.
 4. Rode `npx prisma generate` para atualizar o Prisma Client.
 
-Não há segredo, senha, `DATABASE_URL` ou `DIRECT_URL` reais neste documento nem em nenhum arquivo do projeto sob controle de versão — ver `docs/VARIAVEIS_AMBIENTE.md`.
+Este documento não publica valores de secrets ou conexões reais. Consulte [Variáveis de ambiente](VARIAVEIS_AMBIENTE.md) para configurar um banco próprio.
+
+## Dataset demonstrativo
+
+O seed e o reset compartilham [src/lib/demo/dataset.ts](../src/lib/demo/dataset.ts). Os dados são fictícios. O reset transacional da demo é uma operação separada da criação estrutural pelo SQL consolidado. E-mails suprimidos pelo provedor `disabled` são registrados como `SUPRIMIDO`, sem indicar entrega real.
