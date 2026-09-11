@@ -64,6 +64,7 @@
     "test:demo-solicitacoes-limit": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-solicitacoes-limit.ts",
     "test:demo-status-middleware": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-status-middleware.ts",
     "test:demo-reset-middleware": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-reset-middleware.ts",
+    "test:demo-reset-cron": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-reset-cron.ts",
     "test:demo-dataset-reset": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-demo-dataset-reset.ts",
     "test:login-demo-ux": "ts-node --project scripts/tsconfig.json -r tsconfig-paths/register scripts/test-login-demo-ux.ts",
     "demo:reset": "ts-node --project scripts/tsconfig.json scripts/demo-reset.ts"

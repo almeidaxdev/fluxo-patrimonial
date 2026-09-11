@@ -27,13 +27,15 @@
 //   - POST /api/demo/entrar SEM sessão, DEMO_MODE=false → passa pelo
 //     middleware (nunca bloqueado ali) mas a ROTA devolve 404 (indisponível
 //     fora da demo — comportamento já existente, preservado).
-//   - POST /api/internal/demo-reset SEM sessão → o MIDDLEWARE não bloqueia
-//     mais (exceção cirúrgica caminho+método exatos — ver
-//     scripts/test-demo-reset-middleware.ts para a matriz completa
+//   - POST e GET /api/internal/demo-reset SEM sessão → o MIDDLEWARE não
+//     bloqueia mais (exceção cirúrgica caminho+métodos exatos — POST é o
+//     reset manual/server-to-server, GET é exclusivo do Vercel Cron — ver
+//     scripts/test-demo-reset-middleware.ts e
+//     scripts/test-demo-reset-cron.ts para a matriz completa
 //     middleware+handler dessa rota, incluindo a prova de que sessão nunca
-//     substitui o secret).
-//   - GET /api/internal/demo-reset (método errado) SEM sessão → continua
-//     bloqueado pelo middleware (a exceção é só para POST).
+//     substitui o secret de cada verbo).
+//   - PUT /api/internal/demo-reset (método errado) SEM sessão → continua
+//     bloqueado pelo middleware (a exceção é só para POST/GET).
 //   - Uma rota administrativa qualquer (GET /api/colaboradores) SEM sessão
 //     → continua bloqueada pelo middleware, comportamento intacto.
 //
@@ -171,20 +173,25 @@ async function main() {
 
   // =========================================================================
   // /api/internal/demo-reset — a proteção de sessão do middleware foi
-  // deliberadamente removida SÓ para POST neste caminho exato (a
-  // autenticação de verdade passou a ser inteiramente do handler, via
-  // secret — ver matriz completa em
-  // scripts/test-demo-reset-middleware.ts). Aqui confirmamos só o
-  // contrato do middleware: POST passa, GET (método errado) continua
-  // exigindo sessão normalmente.
+  // deliberadamente removida para POST e GET neste caminho exato (POST é
+  // o reset manual/server-to-server; GET é exclusivo do Vercel Cron — ver
+  // vercel.json). A autenticação de verdade passou a ser inteiramente do
+  // handler, via secret próprio de cada verbo — ver matriz completa em
+  // scripts/test-demo-reset-middleware.ts e
+  // scripts/test-demo-reset-cron.ts. Aqui confirmamos só o contrato do
+  // middleware: POST e GET passam, PUT (método errado) continua exigindo
+  // sessão normalmente.
   // =========================================================================
   {
     process.env.DEMO_MODE = 'true'
     const resPost = await middleware(fakeRequest('/api/internal/demo-reset', 'POST'))
     assert(resPost.status !== 401, 'middleware NÃO bloqueia POST /api/internal/demo-reset sem sessão (exceção cirúrgica)', resPost.status)
 
-    const resGet = await middleware(fakeRequest('/api/internal/demo-reset', 'GET'))
-    assert(resGet.status === 401, 'middleware CONTINUA bloqueando GET /api/internal/demo-reset sem sessão (exceção é só para POST)', resGet.status)
+    const resGetDemoReset = await middleware(fakeRequest('/api/internal/demo-reset', 'GET'))
+    assert(resGetDemoReset.status !== 401, 'middleware NÃO bloqueia GET /api/internal/demo-reset sem sessão (exceção cirúrgica — Vercel Cron)', resGetDemoReset.status)
+
+    const resPut = await middleware(fakeRequest('/api/internal/demo-reset', 'PUT'))
+    assert(resPut.status === 401, 'middleware CONTINUA bloqueando PUT /api/internal/demo-reset sem sessão (exceção é só para POST/GET)', resPut.status)
 
     const resOutraRota = await middleware(fakeRequest('/api/internal/outra-rota', 'POST'))
     assert(

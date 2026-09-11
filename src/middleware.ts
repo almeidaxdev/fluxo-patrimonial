@@ -16,23 +16,28 @@ const PUBLIC_ROUTES = ['/login', '/cadastro']
 // elas. Ver DEMO_RESET_EXACT_PATH abaixo para o caso (diferente) de
 // /api/internal/demo-reset.
 const PUBLIC_DEMO_API_ROUTES = ['/api/demo/status', '/api/demo/entrar']
-// POST /api/internal/demo-reset: rota administrativa pensada para
-// automação server-to-server (npm run demo:reset — ver scripts/demo-
-// reset.ts —, e futuramente um cron) que NUNCA tem cookie de sessão. A
-// autenticação de verdade desta rota é exclusivamente o secret
-// DEMO_RESET_SECRET no header x-demo-reset-secret, comparado em tempo
-// constante DENTRO do handler (src/app/api/internal/demo-reset/route.ts)
-// — cookie de sessão nunca foi nem deve virar autorização para reset,
-// nem mesmo a sessão do Administrador Demo (ver o próprio handler: ele
-// não lê getSession()/getValidatedMutationSession() em nenhum momento).
+// POST|GET /api/internal/demo-reset: rota administrativa pensada para
+// automação server-to-server que NUNCA tem cookie de sessão — POST para
+// disparo manual/server-to-server (npm run demo:reset — ver
+// scripts/demo-reset.ts) e GET exclusivo do Vercel Cron (ver
+// vercel.json). A autenticação de verdade desta rota é exclusivamente o
+// secret de cada verbo — DEMO_RESET_SECRET no header x-demo-reset-secret
+// para o POST, CRON_SECRET no header Authorization: Bearer para o GET —
+// comparado em tempo constante DENTRO do handler
+// (src/app/api/internal/demo-reset/route.ts) — cookie de sessão nunca foi
+// nem deve virar autorização para reset, nem mesmo a sessão do
+// Administrador Demo (ver o próprio handler: ele não lê
+// getSession()/getValidatedMutationSession() em nenhum momento).
 // Isentar esta rota do gate de sessão do middleware não é um bypass de
 // segurança: é remover um SEGUNDO gate (sessão) que nunca foi a
 // credencial real dela, deixando só a credencial que de fato importa (o
-// secret) decidir. Caminho EXATO + MÉTODO EXATO (POST) — nunca prefixo
-// "/api/internal/*" (outras rotas internas futuras continuam exigindo
-// sessão normalmente), nunca libera GET/PUT/DELETE nem qualquer outro
-// verbo nesta mesma rota.
+// secret de cada verbo) decidir. Caminho EXATO + MÉTODOS EXATOS
+// (POST e GET, cada um com sua própria credencial no handler) — nunca
+// prefixo "/api/internal/*" (outras rotas internas futuras continuam
+// exigindo sessão normalmente), nunca libera PUT/PATCH/DELETE nem
+// qualquer outro verbo nesta mesma rota.
 const DEMO_RESET_EXACT_PATH = '/api/internal/demo-reset'
+const DEMO_RESET_METODOS_LIBERADOS = ['POST', 'GET']
 const PATRIMONIO_ROUTES = ['/todas-solicitacoes', '/patrimonios', '/pendencias', '/atendimento-imediato', '/relatorios']
 const ADMIN_ROUTES = ['/colaboradores', '/categorias']
 const GESTOR_ROUTES = ['/aprovacoes']
@@ -69,11 +74,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow POST /api/internal/demo-reset WITHOUT a session — caminho E
-  // método exatos (ver DEMO_RESET_EXACT_PATH acima). Um GET (ou qualquer
-  // outro verbo) para o mesmo caminho, ou qualquer outra rota sob
-  // /api/internal/, continua caindo no gate de sessão normal abaixo.
-  if (request.method === 'POST' && pathname === DEMO_RESET_EXACT_PATH) {
+  // Allow POST/GET /api/internal/demo-reset WITHOUT a session — caminho E
+  // métodos exatos (ver DEMO_RESET_EXACT_PATH/DEMO_RESET_METODOS_LIBERADOS
+  // acima). Qualquer outro verbo (PUT/PATCH/DELETE/...) para o mesmo
+  // caminho, ou qualquer outra rota sob /api/internal/, continua caindo no
+  // gate de sessão normal abaixo.
+  if (DEMO_RESET_METODOS_LIBERADOS.includes(request.method) && pathname === DEMO_RESET_EXACT_PATH) {
     return NextResponse.next()
   }
 
