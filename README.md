@@ -163,7 +163,7 @@ docs/             # Documentação técnica e capturas
 Use uma instância PostgreSQL própria e vazia. A estrutura é criada a partir de [prisma/consolidated.sql](prisma/consolidated.sql); não há migração automática no build.
 
 1. Instale uma versão LTS do Node.js compatível com as dependências e npm. O Next.js declarado aceita Node.js 18.18+; esse mínimo técnico não é recomendação de uma versão antiga.
-2. Clone o repositório. Enquanto privado, o GitHub exige uma conta com acesso.
+2. Clone o repositório público.
 3. Copie o arquivo de exemplo para **`.env` na raiz** e preencha apenas com valores do seu ambiente local. O uso de `.env` permite o carregamento pelo Next.js e pelo Prisma utilizado no seed; `ts-node` não carrega `.env.local` automaticamente.
 
 ```bash
