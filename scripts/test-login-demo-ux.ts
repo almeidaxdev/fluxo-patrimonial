@@ -3,14 +3,14 @@
 // Verificação ESTRUTURAL (mesmo padrão já usado neste projeto para JSX —
 // ver itens F/G/H de scripts/test-patrimonio-operational-ux.ts — "sem DOM/
 // renderer disponível neste projeto") do comportamento condicional da tela
-// de login em relação a DEMO_MODE: src/app/(auth)/login/page.tsx.
+// de login em relação a DEMO_MODE: LoginForm.tsx e seu wrapper no servidor.
 //
 // Por que estrutural (não string solta): em vez de procurar um texto
 // qualquer no arquivo, parseamos o AST real do componente com o
 // TypeScript Compiler API e localizamos os nós JSX específicos — o bloco
 // condicional do link "Cadastre-se" e o bloco condicional do botão
 // "Acessar demonstração" — verificando que ambos dependem da MESMA
-// variável (`demoModeAtivo`, vinda de useDemoMode()) em polaridades
+// variável (`demoModeAtivo`, recebida do servidor) em polaridades
 // opostas (um só quando falso, o outro só quando verdadeiro) e nunca
 // aparecem juntos na mesma branch.
 //
@@ -22,8 +22,8 @@
 //     (o mesmo ternário, lado oposto).
 //   - O botão "Acessar demonstração" continua condicionado a
 //     `demoModeAtivo` (regressão da etapa anterior).
-//   - useDemoMode() continua sendo a única fonte dessa variável (nunca uma
-//     leitura direta de env/localStorage no componente).
+//   - O servidor fornece o modo antes da primeira renderização, sem uma
+//     consulta posterior que faria o link de cadastro piscar na demo.
 //
 // Executar com: npm run test:login-demo-ux
 
@@ -45,10 +45,16 @@ function assert(condition: boolean, label: string, detalhe?: unknown) {
 }
 
 async function main() {
-  const caminho = path.join(path.resolve(__dirname, '..'), 'src/app/(auth)/login/page.tsx')
+  const diretorioLogin = path.join(path.resolve(__dirname, '..'), 'src/app/(auth)/login')
+  const caminho = path.join(diretorioLogin, 'LoginForm.tsx')
   const codigoFonte = fs.readFileSync(caminho, 'utf8')
+  const paginaServidor = fs.readFileSync(path.join(diretorioLogin, 'page.tsx'), 'utf8')
 
-  assert(codigoFonte.includes('useDemoMode()'), 'login/page.tsx usa useDemoMode() como fonte de demoModeAtivo')
+  assert(!paginaServidor.includes("'use client'"), 'página de login é renderizada no servidor')
+  assert(paginaServidor.includes("import { isDemoModeAtivo } from '@/lib/demo-mode'"), 'servidor usa a fonte canônica do modo de demonstração')
+  assert(paginaServidor.includes('<LoginForm demoModeAtivo={isDemoModeAtivo()} />'), 'modo de demonstração é fornecido antes da primeira renderização')
+  assert(!codigoFonte.includes('useDemoMode') && !codigoFonte.includes('/api/demo/status'), 'formulário não espera uma consulta client-side para decidir entre demonstração e cadastro')
+  assert(codigoFonte.includes('demoModeAtivo: boolean'), 'formulário exige o modo do servidor, sem valor inicial falso')
 
   const sourceFile = ts.createSourceFile(caminho, codigoFonte, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 
