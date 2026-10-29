@@ -51,8 +51,8 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Paleta institucional herdada do Senac Patrimônio — azul como cor
-        // primária e laranja como realce. Mantemos os nomes semânticos
+        // Paleta visual do Fluxo Patrimonial — azul como cor primária
+        // e laranja como realce. Mantemos os nomes semânticos
         // "brand"/"highlight" (nunca "accent": esse nome já é
         // usado pelos tokens shadcn em globals.css — reutilizá-lo aqui sobrescreveria
         // silenciosamente o hover/highlight padrão dos componentes shadcn em todo o app).
