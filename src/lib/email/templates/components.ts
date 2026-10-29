@@ -19,7 +19,7 @@ export function renderButton({ href, label }: RenderButtonInput): string {
   return `
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 16px 0;">
   <tr>
-    <td align="center" bgcolor="#0F6B63" style="border-radius: 6px;">
+    <td align="center" bgcolor="#004a8d" style="border-radius: 6px;">
       <a href="${safeHref}" target="_blank"
          style="display: inline-block; padding: 14px 32px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 6px;">
         ${safeLabel}
@@ -31,7 +31,7 @@ export function renderButton({ href, label }: RenderButtonInput): string {
   Se o botão não funcionar, copie e cole este link no navegador:
 </p>
 <p style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 0 0 24px 0; word-break: break-all;">
-  <a href="${safeHref}" target="_blank" style="color: #0F6B63;">${safeHref}</a>
+  <a href="${safeHref}" target="_blank" style="color: #004a8d;">${safeHref}</a>
 </p>`.trim()
 }
 
@@ -119,7 +119,7 @@ export function renderItemList(title: string, items: ListItemInput[]): string {
 
   return `
 <div style="margin: 20px 0;">
-  <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: bold; color: #0F6B63; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">
+  <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: bold; color: #004a8d; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px;">
     ${escapeHtml(title)}
   </div>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">

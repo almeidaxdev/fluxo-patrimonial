@@ -142,7 +142,7 @@ export default function LoginForm({ demoModeAtivo }: { demoModeAtivo: boolean })
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(15,107,99,0.18)] border border-gray-100 px-6 py-7 sm:px-9 sm:py-10">
+    <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,48,135,0.18)] border border-gray-100 px-6 py-7 sm:px-9 sm:py-10">
       {/* Cabeçalho: wordmark — único no mobile, ver src/app/(auth)/layout.tsx —
           + título + subtítulo discreto. */}
       <div className="text-center mb-6 sm:mb-8">

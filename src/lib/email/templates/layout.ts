@@ -34,7 +34,7 @@ export function renderEmailLayout({ title, bodyHtml, testOriginalRecipient }: Re
         <td align="center" style="padding: 32px 16px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e3e6eb;">
             <tr>
-              <td style="padding: 28px 32px; background-color: #0F6B63;">
+              <td style="padding: 28px 32px; background-color: #004a8d;">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
                     <td style="font-family: Arial, Helvetica, sans-serif;">

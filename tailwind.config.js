@@ -51,20 +51,20 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Paleta de marca própria do Fluxo Patrimonial — petróleo (fluxo/movimento)
-        // como cor primária e latão/âmbar (ativos/etiquetas patrimoniais) como
-        // realce. Nomeada "brand"/"highlight" (nunca "accent": esse nome já é
+        // Paleta institucional herdada do Senac Patrimônio — azul como cor
+        // primária e laranja como realce. Mantemos os nomes semânticos
+        // "brand"/"highlight" (nunca "accent": esse nome já é
         // usado pelos tokens shadcn em globals.css — reutilizá-lo aqui sobrescreveria
         // silenciosamente o hover/highlight padrão dos componentes shadcn em todo o app).
         brand: {
-          DEFAULT: '#0F6B63',
-          light: '#3D8F86',
-          dark: '#0A4A45',
+          DEFAULT: '#003087',
+          light: '#0050c8',
+          dark: '#001f5b',
         },
         highlight: {
-          DEFAULT: '#C08A2E',
-          light: '#D9A94D',
-          dark: '#96691E',
+          DEFAULT: '#F07B00',
+          light: '#FF9A2E',
+          dark: '#C06200',
         },
       },
       borderRadius: {

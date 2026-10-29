@@ -693,9 +693,9 @@ function VisaoGerencial({ dados, emAndamento, taxaRetirada }: {
                 <YAxis fontSize={12} allowDecimals={false} />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="Total" stroke="#0F6B63" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Internas" stroke="#3D8F86" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="Externas" stroke="#C08A2E" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="Total" stroke="#003087" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Internas" stroke="#0050c8" strokeWidth={1.5} dot={false} />
+                <Line type="monotone" dataKey="Externas" stroke="#F07B00" strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="Atend. Imediato" stroke="#7c3aed" strokeWidth={1.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -726,8 +726,8 @@ function VisaoGerencial({ dados, emAndamento, taxaRetirada }: {
               <YAxis fontSize={12} allowDecimals={false} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Reservas" fill="#0F6B63" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Atend. Imediato" fill="#C08A2E" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Reservas" fill="#003087" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Atend. Imediato" fill="#F07B00" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </GraficoCard>
@@ -740,7 +740,7 @@ function VisaoGerencial({ dados, emAndamento, taxaRetirada }: {
                 <XAxis type="number" fontSize={12} allowDecimals={false} hide />
                 <YAxis type="category" dataKey="nome" fontSize={12} width={110} />
                 <Tooltip />
-                <Bar dataKey="Utilizações" fill="#0F6B63" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="Utilizações" fill="#003087" radius={[0, 4, 4, 0]}>
                   <LabelList dataKey="Utilizações" position="right" fontSize={12} fill="#374151" />
                 </Bar>
               </BarChart>
@@ -773,7 +773,7 @@ function VisaoGerencial({ dados, emAndamento, taxaRetirada }: {
                 <XAxis type="number" fontSize={12} allowDecimals={false} hide />
                 <YAxis type="category" dataKey="nome" fontSize={12} width={130} />
                 <Tooltip />
-                <Bar dataKey="Ocorrências" fill="#C08A2E" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="Ocorrências" fill="#F07B00" radius={[0, 4, 4, 0]}>
                   <LabelList dataKey="Ocorrências" position="right" fontSize={12} fill="#374151" />
                 </Bar>
               </BarChart>

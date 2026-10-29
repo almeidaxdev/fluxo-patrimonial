@@ -63,7 +63,7 @@ export default function CadastroPage() {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(15,107,99,0.18)] border border-gray-100 px-7 py-9 sm:px-9 sm:py-10">
+    <div className="bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,48,135,0.18)] border border-gray-100 px-7 py-9 sm:px-9 sm:py-10">
       {/* Wordmark — mesmo tratamento visual do login. */}
       <div className="text-center mb-8">
         <Wordmark className="text-2xl justify-center mb-5" />

@@ -49,7 +49,7 @@ export type SolicitacaoTermo = Prisma.SolicitacaoGetPayload<{ select: typeof SEL
 // lado — mesmo conteúdo, mesma ordem de campos, só a disposição muda. É o
 // maior ganho de espaço vertical do documento. Nenhum tamanho de fonte foi
 // reduzido nesta rodada — só espaçamento (margin/padding).
-const C = { blue: '#0F6B63', dark: '#17324d', gray: '#667085', line: '#c7d2dd', bg: '#f6f8fa' }
+const C = { blue: '#004b87', dark: '#17324d', gray: '#667085', line: '#c7d2dd', bg: '#f6f8fa' }
 const s = StyleSheet.create({
   page: { paddingTop: 28, paddingBottom: 36, paddingHorizontal: 42, fontFamily: 'Helvetica', fontSize: 10, color: C.dark },
   headerKicker: { fontSize: 8.5, color: C.gray, fontFamily: 'Helvetica-Bold', letterSpacing: 0.6 },

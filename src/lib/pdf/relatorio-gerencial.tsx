@@ -16,15 +16,15 @@ Font.registerHyphenationCallback((word) => [word])
 type Dados = Awaited<ReturnType<typeof obterDadosRelatorio>>
 type Detalhes = Awaited<ReturnType<typeof obterDetalhamentoRelatorio>>
 
-const C = { blue: '#0F6B63', dark: '#17324d', pale: '#e6f0ef', gray: '#667085', line: '#d9e2ea', bg: '#f6f8fa', green: '#18794e', red: '#b42318', white: '#ffffff' }
+const C = { blue: '#004b87', dark: '#17324d', pale: '#eaf2f8', gray: '#667085', line: '#d9e2ea', bg: '#f6f8fa', green: '#18794e', red: '#b42318', white: '#ffffff' }
 const s = StyleSheet.create({
   page: { paddingTop: 24, paddingBottom: 48, paddingHorizontal: 38, fontFamily: 'Helvetica', fontSize: 8.5, color: C.dark, backgroundColor: C.white },
   cover: { padding: 54, fontFamily: 'Helvetica', backgroundColor: C.blue, color: C.white },
-  coverRule: { width: 54, height: 5, backgroundColor: '#C08A2E', marginTop: 150, marginBottom: 30 },
+  coverRule: { width: 54, height: 5, backgroundColor: '#f6a800', marginTop: 150, marginBottom: 30 },
   coverKicker: { fontSize: 10, letterSpacing: 1.8, marginBottom: 12 },
   coverTitle: { fontSize: 29, fontFamily: 'Helvetica-Bold', lineHeight: 1.15 },
   coverSub: { fontSize: 16, marginTop: 8 },
-  coverMeta: { position: 'absolute', left: 54, right: 54, bottom: 58, borderTopWidth: 1, borderTopColor: '#3D8F86', paddingTop: 18, fontSize: 10, lineHeight: 1.6 },
+  coverMeta: { position: 'absolute', left: 54, right: 54, bottom: 58, borderTopWidth: 1, borderTopColor: '#6e9abd', paddingTop: 18, fontSize: 10, lineHeight: 1.6 },
   header: { borderBottomWidth: 1, borderBottomColor: C.line, paddingBottom: 8, marginBottom: 30, flexDirection: 'row', justifyContent: 'space-between', color: C.blue, fontSize: 7.5, fontFamily: 'Helvetica-Bold' },
   footer: { position: 'absolute', bottom: 20, left: 38, right: 38, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 7, flexDirection: 'row', justifyContent: 'space-between', color: C.gray, fontSize: 7 },
   title: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: C.blue, marginBottom: 4 },

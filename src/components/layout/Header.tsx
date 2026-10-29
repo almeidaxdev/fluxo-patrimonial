@@ -35,7 +35,7 @@ export function Header({ user, onMenuClick, title }: HeaderProps) {
   }
 
   return (
-    <header className="h-[4.25rem] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 shadow-[0_1px_2px_rgba(15,107,99,0.04)] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-[4.25rem] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 shadow-[0_1px_2px_rgba(0,48,135,0.04)] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <button
           onClick={onMenuClick}
